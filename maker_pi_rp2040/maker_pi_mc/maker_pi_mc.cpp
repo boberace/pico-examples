@@ -119,6 +119,7 @@ int main() {
 
             }
 
+            // output setpoints, input and outputs for plotting
             char str[128];
              sprintf(str, "%1.2f\t%1.2f\t%1.2f\t%1.2f\t%1.2f\t%1.2f\n", 
                 pid1.get_setpoint()*100, mv_e1*100, ov_e1*100, 

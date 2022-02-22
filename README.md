@@ -94,6 +94,13 @@ App|Description
 ---|---
 [hello_interp](interp/hello_interp) | A bundle of small examples, showing how to access the core-local interpolator hardware, and use most of its features.
 
+### Maker Pi RP2040
+
+App|Description
+---|---
+[maker_pi_mc](maker_pi_rp2040/maker_pi_mc) | Closed loop motor controller.  Uses pio to read quadrature encoders and a PID loop to control DC motors.
+
+
 ### Multicore
 
 App|Description
