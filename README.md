@@ -98,6 +98,7 @@ App|Description
 
 App|Description
 ---|---
+[maker_pi_mc](maker_pi_rp2040/maker_pi_mc) | Closed loop motor controller.  Uses PIO to read quadrature encoders and a PID loop to control DC motors.
 
 
 ### Multicore
