@@ -1,6 +1,7 @@
 #ifndef bmc_h
 #define bmc_h
-
+// creates a simple motor controller instance
+// the motor setpoint is between -1 to 1
 #include <stdint.h> 
 #include "hardware/pwm.h"
 #include "pico/stdlib.h"

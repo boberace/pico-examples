@@ -5,13 +5,15 @@ pico_generate_pio_header(maker_pi_mc ${CMAKE_CURRENT_LIST_DIR}/quadrature_encode
 target_sources(maker_pi_mc PRIVATE 
                 maker_pi_mc.cpp
                 bmc.cpp
-                pid.cpp)
+                pid.cpp
+                i2c_slave.c)
 
 target_link_libraries(maker_pi_mc PRIVATE
         pico_stdlib
         pico_multicore
         hardware_pio
         hardware_pwm
+        pico_stdlib hardware_i2c
         )
 
 pico_enable_stdio_usb(maker_pi_mc 1)
