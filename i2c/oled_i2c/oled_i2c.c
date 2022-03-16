@@ -13,22 +13,12 @@
 #include "raspberry26x32.h"
 
 /* Example code to talk to an SSD1306-based OLED display
-
-   NOTE: Ensure the device is capable of being driven at 3.3v NOT 5v. The Pico
-   GPIO (and therefore I2C) cannot be used at 5v.
-
-   You will need to use a level shifter on the I2C lines if you want to run the
-   board at 5v.
-
-   Connections on Raspberry Pi Pico board, other boards may vary.
-
-   GPIO PICO_DEFAULT_I2C_SDA_PIN (on Pico this is GP4 (pin 6)) -> SDA on display
-   board
-   GPIO PICO_DEFAULT_I2C_SCK_PIN (on Pico this is GP5 (pin 7)) -> SCL on
-   display board
-   3.3v (pin 36) -> VCC on display board
-   GND (pin 38)  -> GND on display board
+    changed pins for RP2040 Micro Qwiic
 */
+
+#define PIN_I2C_SDA 16
+#define PIN_I2C_SCL 17
+
 
 // commands (see datasheet)
 #define OLED_SET_CONTRAST _u(0x81)
@@ -52,7 +42,7 @@
 #define OLED_SET_SCROLL _u(0x2E)
 
 #define OLED_ADDR _u(0x3C)
-#define OLED_HEIGHT _u(32)
+#define OLED_HEIGHT _u(64)
 #define OLED_WIDTH _u(128)
 #define OLED_PAGE_HEIGHT _u(8)
 #define OLED_NUM_PAGES OLED_HEIGHT / OLED_PAGE_HEIGHT
@@ -231,12 +221,12 @@ void render(uint8_t *buf, struct render_area *area) {
 int main() {
     stdio_init_all();
 
-#if !defined(i2c_default) || !defined(PICO_DEFAULT_I2C_SDA_PIN) || !defined(PICO_DEFAULT_I2C_SCL_PIN)
+#if !defined(i2c_default) || !defined(PIN_I2C_SDA) || !defined(PIN_I2C_SCL)
 #warning i2c / oled_i2d example requires a board with I2C pins
     puts("Default I2C pins were not defined");
 #else
     // useful information for picotool
-    bi_decl(bi_2pins_with_func(PICO_DEFAULT_I2C_SDA_PIN, PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C));
+    bi_decl(bi_2pins_with_func(PIN_I2C_SDA, PIN_I2C_SCL, GPIO_FUNC_I2C));
     bi_decl(bi_program_description("OLED I2C example for the Raspberry Pi Pico"));
 
     printf("Hello, OLED display! Look at my raspberries..\n");
@@ -244,10 +234,10 @@ int main() {
     // I2C is "open drain", pull ups to keep signal high when no data is being
     // sent
     i2c_init(i2c_default, 400 * 1000);
-    gpio_set_function(PICO_DEFAULT_I2C_SDA_PIN, GPIO_FUNC_I2C);
-    gpio_set_function(PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C);
-    gpio_pull_up(PICO_DEFAULT_I2C_SDA_PIN);
-    gpio_pull_up(PICO_DEFAULT_I2C_SCL_PIN);
+    gpio_set_function(PIN_I2C_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(PIN_I2C_SCL, GPIO_FUNC_I2C);
+    gpio_pull_up(PIN_I2C_SDA);
+    gpio_pull_up(PIN_I2C_SCL);
 
     // run through the complete initialization process
     oled_init();
