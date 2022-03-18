@@ -106,12 +106,14 @@ int main() {
 
     while (true) {
 
-        if(display_timer_flagged) {
+        sleep_ms(200);
+        // if(display_timer_flagged) {
+            display_timer_flagged = false;
             read_pot();           
             rps = RT_MAXRPS*(pot_pct/100.0);
             set_rps(rps);
             update_display();        
-        }
+        // }
 
     }
 
