@@ -167,7 +167,7 @@ App|Description
 
 App|Description
 ---|---
-[spin_test](spint_test) | Rotary table with slip ring and oled display.  For testing sensors while in spin.
+[spin_test](spin_test) | Rotary table with slip ring and oled display.  For testing sensors while in spin.
 
 ### System
 
