@@ -62,7 +62,7 @@ void set_rps(float rps);
 void hall_blink(PIO pio, uint sm, uint offset, uint pin_hall, uint pin_led);
 
 int display_previous_ms = 0;
-bool display_timer_flagged = false;
+volatile bool display_timer_flagged = false;
 long pot_pct = 0;
 uint16_t pot_result = 0;
 const float conversion_factor = 3.3f / (1 << 12);
@@ -106,14 +106,14 @@ int main() {
 
     while (true) {
 
-        sleep_ms(200);
-        // if(display_timer_flagged) {
+        // sleep_ms(200);
+        if(display_timer_flagged) {
             display_timer_flagged = false;
             read_pot();           
             rps = RT_MAXRPS*(pot_pct/100.0);
             set_rps(rps);
             update_display();        
-        // }
+        }
 
     }
 
@@ -153,6 +153,7 @@ void setup_leds(void){
 bool display_timer_callback(struct repeating_timer *t) {
 
     display_timer_flagged = true;
+    // printf("Repeat at %lld\n", time_us_64());
     return true;
 }
 
@@ -181,8 +182,7 @@ void update_display(void){
     ssd1306_draw_string(&disp, 0, 48, 1, str);
     ssd1306_show(&disp);
 
-    pin_toggle(PIN_LED);
-    display_timer_flagged = false;   
+    pin_toggle(PIN_LED); 
 
 }
 
