@@ -163,6 +163,12 @@ App|Description
 [spi_dma](spi/spi_dma) | Use DMA to transfer data both to and from the SPI simultaneously. The SPI is configured for loopback.
 [spi_flash](spi/spi_flash) | Erase, program and read a serial flash device attached to one of the SPI controllers.
 
+### Spin Test
+
+App|Description
+---|---
+[spin_test](spint_test) | Rotary table with slip ring and oled display.  For testing sensors while in spin.
+
 ### System
 
 App|Description
