@@ -36,22 +36,13 @@
 #include "pico/stdlib.h"
 #include <stdio.h>
 
-bno055_pico::bno055_pico(i2c_inst_t *i2c, uint gpio_sda, uint gpio_scl, uint i2c_khz){
-
+bno055_i2c::bno055_i2c(i2c_inst_t *i2c){
     _i2c = i2c;
-    _gpio_sda = gpio_sda;
-    _gpio_scl = gpio_scl;
-    _i2c_khz = i2c_khz;
-
-    gpio_set_function(_gpio_sda, GPIO_FUNC_I2C);
-    gpio_set_function(_gpio_scl, GPIO_FUNC_I2C);
-    gpio_pull_up(_gpio_sda);
-    gpio_pull_up(_gpio_scl);
-    i2c_init(_i2c, _i2c_khz * 1000); 
+    if(bno055_init(&bno055) != 0) printf("bno055_i2c init error");
 
 }
 
-void bno055_pico::BNO055_delay_msek(u32 msek)
+void bno055_i2c::BNO055_delay_msek(u32 msek)
 {
     sleep_ms(msek);
 }
@@ -65,7 +56,7 @@ void bno055_pico::BNO055_delay_msek(u32 msek)
  *      will be used for write the value into the register
  *  \param cnt : The no of byte of data to be write
  */
-s8 bno055_pico::BNO055_I2C_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
+s8 bno055_i2c::BNO055_I2C_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
 {
     u8 IERROR = 0;
     if(i2c_write_blocking(_i2c, dev_addr, &reg_addr, 1, true)){
@@ -92,7 +83,7 @@ s8 bno055_pico::BNO055_I2C_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 
  *  \param cnt : The no of byte of data to be read
  */
 
-s8 bno055_pico::BNO055_I2C_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
+s8 bno055_i2c::BNO055_I2C_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
 {
     u8 IERROR = 0;
     if(i2c_write_blocking(_i2c, dev_addr, &reg_addr, 1, true)){

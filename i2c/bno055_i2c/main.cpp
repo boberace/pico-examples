@@ -12,11 +12,10 @@
 // #include "hardware/irq.h"
 
 #define I2C0_BUADRATE 400*1000
-#define I2C_BNO085 i2c0
-
 #define PIN_I2C0_SDA 16
 #define PIN_I2C0_SCL 17
 
+bno055_i2c bno055(i2c0);
 
 void setup_i2c0(void);
 

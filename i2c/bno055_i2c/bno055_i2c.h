@@ -33,6 +33,9 @@
 */
 
 /*
+
+bno055 wrapper for the RP2040 i2c
+
 todo:
 remove bno055 code/header files and replace with link to github repository
 
@@ -42,28 +45,26 @@ remove bno055 code/header files and replace with link to github repository
 #ifndef bno055_i2c_h
 #define bno055_i2c_h
 
+extern "C" { // can't get this from .c ?
 #include "bno055.h"
+}
 
 // #include <stdint.h>
 // #include <string.h>
 // #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 
-class bno055_pico{
+class bno055_i2c{
     public:
-        bno055_pico(i2c_inst_t *i2c, uint gpio_sda, uint gpio_scl, uint i2c_khz = 400);
+        struct bno055_t bno055;
+        bno055_i2c(i2c_inst_t *i2c);        
 
     private:
-    i2c_inst_t *_i2c;
-    uint _gpio_sda, _gpio_scl, _i2c_khz;
 
-    void BNO055_delay_msek(u32 msek);
-    s8 BNO055_I2C_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt);
-    s8 BNO055_I2C_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt);
-
-    // void BNO055_delay_msek(u32 msek);
-    // s8 BNO055_I2C_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt);
-    // s8 BNO055_I2C_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt);
+        i2c_inst_t *_i2c;
+        void BNO055_delay_msek(u32 msek);
+        s8 BNO055_I2C_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt);
+        s8 BNO055_I2C_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt);
 };
 
 #endif
