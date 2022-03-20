@@ -1,5 +1,6 @@
 if (NOT PICO_NO_HARDWARE)
     add_subdirectory(bmp280_i2c)
+    add_subdirectory(bno055_i2c)
     add_subdirectory(bus_scan)
     add_subdirectory(lcd_1602_i2c)
     add_subdirectory(lis3dh_i2c)

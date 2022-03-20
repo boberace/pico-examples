@@ -1,12 +1,12 @@
-add_executable(BNO055)
+add_executable(bno055_i2c)
 
-target_sources(BNO055 PRIVATE 
+target_sources(bno055_i2c PRIVATE 
         main.cpp
         bno055.c
-        bno055_pico.cpp
+        bno055_i2c.cpp
         )
 
-target_link_libraries(BNO055 PRIVATE
+target_link_libraries(bno055_i2c PRIVATE
         pico_stdlib
         pico_multicore
         hardware_pio
@@ -16,9 +16,9 @@ target_link_libraries(BNO055 PRIVATE
         hardware_irq
         )
 
-pico_enable_stdio_usb(BNO055 1)
+pico_enable_stdio_usb(bno055_i2c 1)
 
-pico_add_extra_outputs(BNO055)
+pico_add_extra_outputs(bno055_i2c)
 
 # add url via pico_set_program_url
-example_auto_set_url(BNO055)
+example_auto_set_url(bno055_i2c)

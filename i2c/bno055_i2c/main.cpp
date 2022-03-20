@@ -1,4 +1,4 @@
-#include "bno055_pico.h"
+#include "bno055_i2c.h"
 // #include <stdio.h>
 // #include <stdint.h>
 // #include <string.h>

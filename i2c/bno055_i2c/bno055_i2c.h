@@ -39,11 +39,11 @@ remove bno055 code/header files and replace with link to github repository
 
 
 */
-#ifndef bno055_pico_h
-#define bno055_pico_h
+#ifndef bno055_i2c_h
+#define bno055_i2c_h
 
 #include "bno055.h"
-// #include <stdio.h>
+
 // #include <stdint.h>
 // #include <string.h>
 // #include "pico/stdlib.h"
@@ -51,11 +51,15 @@ remove bno055 code/header files and replace with link to github repository
 
 class bno055_pico{
     public:
-        bno055_pico(i2c_inst_t *i2c, uint gpio_sda, uint gpio_scl);
+        bno055_pico(i2c_inst_t *i2c, uint gpio_sda, uint gpio_scl, uint i2c_khz = 400);
 
     private:
     i2c_inst_t *_i2c;
-    uint _gpio_sda, _gpio_scl;
+    uint _gpio_sda, _gpio_scl, _i2c_khz;
+
+    void BNO055_delay_msek(u32 msek);
+    s8 BNO055_I2C_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt);
+    s8 BNO055_I2C_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt);
 
     // void BNO055_delay_msek(u32 msek);
     // s8 BNO055_I2C_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt);
