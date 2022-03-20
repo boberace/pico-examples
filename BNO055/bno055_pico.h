@@ -31,6 +31,14 @@
 * POSSIBILITY OF SUCH DAMAGE.
 *
 */
+
+/*
+todo:
+remove bno055 code/header files and replace with link to github repository
+
+
+
+*/
 #ifndef bno055_pico_h
 #define bno055_pico_h
 
