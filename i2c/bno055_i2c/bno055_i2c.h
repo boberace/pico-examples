@@ -37,10 +37,14 @@
 /*---------------------------------------------------------------------------*
 *  Includes
 *---------------------------------------------------------------------------*/
-#include "bno055.h"
+
 #include "hardware/i2c.h"
 
-struct bno055_t bno055;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "bno055.h"
 
 s32 bno055_i2c_init(i2c_inst_t *i2c);
 
@@ -105,5 +109,8 @@ s32 bno055_data_readout_template(void);
  *---------------------------------------------------------------------------*/
 struct bno055_t bno055;
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

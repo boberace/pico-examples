@@ -130,9 +130,9 @@ int main() {
     printf("\nbno055_set_operation_mode %04x\n",comres);
     sleep_us(30);
 
-    u8 cs = 0x80;
-    bno055_set_clk_src(cs);
-    u8reg = cmag = cacc = cgyr = csys = 0;
+    // u8 cs = 0x80;
+    // bno055_set_clk_src(cs);
+    // u8reg = cmag = cacc = cgyr = csys = 0;
 
     while (true) {
 

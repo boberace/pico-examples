@@ -39,7 +39,7 @@ i2c_inst_t *i2cx;
 
 s32 bno055_i2c_init(i2c_inst_t *i2c){
     i2cx = i2c;
-    s32 comres = BNO055_ERROR;
+    s32 comres;
 
     /*---------------------------------------------------------------------------*
      *********************** START INITIALIZATION ************************
@@ -48,8 +48,7 @@ s32 bno055_i2c_init(i2c_inst_t *i2c){
 
     /*  Based on the user need configure I2C interface.
      *  It is example code to explain how to use the bno055 API*/
-    I2C_routine();
-
+    comres = I2C_routine();
 
     /*--------------------------------------------------------------------------*
      *  This API used to assign the value/reference of
@@ -65,7 +64,16 @@ s32 bno055_i2c_init(i2c_inst_t *i2c){
      *  Boot loader revision id
      *  Software revision id
      *-------------------------------------------------------------------------*/
-    comres = bno055_init(&bno055);
+    comres += bno055_init(&bno055);
+
+    printf(" chip_id %04x\n", bno055.chip_id); /**< chip_id of bno055 */
+    printf(" sw_rev_id %04x\n", bno055.sw_rev_id); /**< software revision id of bno055 */
+    printf(" page_id %04x\n", bno055.page_id ); /**< page_id of bno055 */
+    printf(" accel_rev_id %04x\n", bno055.accel_rev_id ); /**< accel revision id of bno055 */
+    printf(" mag_rev_id %04x\n", bno055.mag_rev_id); /**< mag revision id of bno055 */
+    printf(" gyro_rev_id %04x\n", bno055.gyro_rev_id ); /**< gyro revision id of bno055 */
+    printf(" bl_rev_id %04x\n", bno055.bl_rev_id ); /**< boot loader revision id of bno055 */
+    printf(" dev_addr %04x\n", bno055.dev_addr ); /**< i2c device address of bno055 */
 
     /*  For initializing the BNO sensor it is required to the operation mode
      * of the sensor as NORMAL
@@ -76,6 +84,8 @@ s32 bno055_i2c_init(i2c_inst_t *i2c){
 
     /* set the power mode as NORMAL*/
     comres += bno055_set_power_mode(BNO055_POWER_MODE_NORMAL);
+
+
 
     /*----------------------------------------------------------------*
      ************************* END INITIALIZATION *************************
@@ -125,13 +135,13 @@ s8 I2C_routine()
  */
 s8 BNO055_I2C_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
 {
+
     u8 IERROR = 0;
     if(i2c_write_blocking(i2cx, dev_addr, &reg_addr, 1, true)){
         if(i2c_write_blocking(i2cx, dev_addr, reg_data, cnt, false) != cnt){
             printf("BNO055_I2C_bus_write failed to write to %d bytes to address %02x on I2C_BNO085\n", cnt, reg_addr);
             IERROR = -1;
         }
-
     }else{
         printf("BNO055_I2C_bus_write failed to write address %02x to I2C_BNO085\n", reg_addr);
         IERROR = -1;
