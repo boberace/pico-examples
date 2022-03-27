@@ -4,7 +4,10 @@ pico_generate_pio_header(spin_test ${CMAKE_CURRENT_LIST_DIR}/hall.pio)
 
 target_sources(spin_test PRIVATE 
         spin_test.cpp
-        ssd1306.c)
+        ssd1306.c
+        bno055.c
+        bno055_i2c.c
+        )
 
 target_link_libraries(spin_test PRIVATE
         pico_stdlib

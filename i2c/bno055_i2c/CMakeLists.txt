@@ -1,8 +1,9 @@
 add_executable(bno055_i2c)
 
 target_sources(bno055_i2c PRIVATE 
-        main.cpp
+        main.c
         bno055.c
+        bno055_i2c.c
         )
 
 target_link_libraries(bno055_i2c PRIVATE
