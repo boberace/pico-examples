@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <cstring>
 #include "pico/stdlib.h"
-#include <regex>
-#include <string>
+
+// #include <regex>
+// #include <string>
 
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
@@ -16,7 +18,7 @@
 #include "i2c_fifo.h"
 #include "i2c_slave.h"
 
-using namespace std;
+// using namespace std;
 
 // --- This project configures the MAKER PI RP2040 into a closed loop motor controller
 // A pio block and two pio state machines are used for the two quadrature enoder inputs.
@@ -30,7 +32,7 @@ using namespace std;
 // control of the PCA9685 is not emulated.
 // --- Refer to the NXP PCA9685 product data sheet for register commands.
 // --- This example is setup to recieve pwm commands from Ardupilot that is
-// setup for bipolar motor control using the PCA9685 for pwm output. The frequency is 1000 hz 
+// setup for bipolar motor control using the PCA9685 for pwm output. The frequency in 1000 hz 
 // with full negative speed at 600 us, zero speed 800 us and full positive speed 1000 us.
 // This leave
 // 
@@ -40,14 +42,17 @@ using namespace std;
 //          investigate pid constant as a function of speed - linear
 //          setup Ardupilot pwm - and pca9685 output enable pin emul
 
-#define PIN_E2_AB  2 // &(3)  first pin of encoder 2 - second pin is automatically next pin 
-#define PIN_UART_TX 4
-#define PIN_UART_RX 5
+#define DEBUG // uncomment to print debug info to usb serial
+// GROVE CONNECTOR [G#], companion pin implicitly declared (&#)
+#define PIN_E2_AB  2 // &(3) [G2]  first pin of encoder 2 - second pin is automatically next pin 
+#define PIN_UART_TX 4 // [G3]
+#define PIN_UART_RX 5 // G3
 #define PIN_M1_AB  8 // &(9) first pin of motor 1 - second pin is automatically next pin
 #define PIN_M2_AB  10 // &(11) first pin of motor 2 - second pin is automatically next pin
-#define PIN_E1_AB  16  // &(17)  first pin of encoder 1 - second pin is automatically next pin 1
-#define PIN_I2C_SDA_S 26
-#define PIN_I2C_SCL_S 27
+#define PIN_E1_AB  16  // &(17) [G4]  first pin of encoder 1 - second pin is automatically next pin 1
+#define PIN_I2C_SDA_S 26 //[G6]
+#define PIN_I2C_SCL_S 27 //[G6]
+
 
 static void gpio_callback(uint gpio, uint32_t events); // function decleration - code below main()
 static void get_usb_serial(); // function decleration - code below main()
@@ -104,6 +109,7 @@ int main() {
     stdio_init_all(); 
     setup_slave();
     sleep_ms(1000);
+    // while(!stdio_usb_connected()); // use this for when you have to print to serial upon startup - this waits for the connection
 
     // setup pio and state machines for encoders
     uint offset = pio_add_program(PIO_ENC, &quadrature_encoder_program); // add encoder program get location
@@ -135,24 +141,22 @@ int main() {
          get_usb_serial();
 
          if(context.recieved){
-            // printf("recieved data for PCA9685\n");
+            printf("recieved data for PCA9685\n");
             context.recieved = false;
 
             //go through the led on/off-high/low registers and calculate pulse witdth to put in pwch
             for(int i=0; i<NUM_PWMCH*4;i+=4){
-                uint16_t pw =   (((context.mem[6+i+3]<<8) + context.mem[6+i+2])- // led off high/low minus
-                                ((context.mem[6+i+1]<<8) + context.mem[6+i+0])); // led on high/low - typically zero but jic
-                // make sure motors are in range
-                if (i == 0 or i == 2) {                                   
-                    if (pw >= FULL_NEG_PW and pw <= FULL_POS_PW) pwch[(int)i/4] = pw;
-                    
-                    // else printf("out of range pulse width for channel %d, value: %d\n", i, pw);
+            pwch[(int)i/4] =    (((context.mem[6+i+3]<<8) + context.mem[6+i+2])- // led off high/low minus
+                                ((context.mem[6+i+1]<<8) + context.mem[6+i+0])); // led on high/low - typically zero but jic                              
 
-                    // printf("- recieved channel %d, value: %d\n", i, pw);
-                }
-            }
-            pid1.set_setpoint(set_point(pwch[0]));
-            pid2.set_setpoint(set_point(pwch[2]));
+            }            
+            // send to motor pid if in range
+            uint8_t ch = 0;                                
+            if (pwch[ch]>= FULL_NEG_PW and pwch[ch]  <= FULL_POS_PW)  pid1.set_setpoint(set_point(pwch[ch]));                    
+            printf("pulse width for channel %d, value: %d\n", ch, pwch[ch]);
+            ch = 2;                                
+            if (pwch[ch]>= FULL_NEG_PW and pwch[ch]  <= FULL_POS_PW)  pid2.set_setpoint(set_point(pwch[ch]));                    
+            printf("pulse width for channel %d, value: %d\n", ch, pwch[ch]);   
             
          }
 
@@ -234,7 +238,6 @@ static void setup_slave(void) {
     i2c_slave_init(I2C_INSTANCE_S, PICO_I2C_ADDR, &i2c_slave_handler);
 }
 
-
 static void gpio_callback(uint gpio, uint32_t events) {
 
     if(gpio == 20){
@@ -262,88 +265,91 @@ static void gpio_callback(uint gpio, uint32_t events) {
 static void get_usb_serial(){
 
         uint8_t NUM_CHAR = 16;
-        char cstr[NUM_CHAR];
-        uint16_t time_out_us = 10000;
+        uint8_t buffer[NUM_CHAR];        
         uint8_t counter = 0;
-        sleep_ms(1);
-        char chr = getchar_timeout_us(time_out_us);
-        while (chr != 0xFF and chr != 0xA and counter < NUM_CHAR) { 
-                cstr[counter] = chr;
-                counter++;
-            chr = getchar_timeout_us(time_out_us);
+        uint32_t time_out_us = 100;
+        memset(buffer, 0, sizeof(buffer)); // clear out char array 
+        int chr = getchar_timeout_us(time_out_us);
+        while (chr != PICO_ERROR_TIMEOUT and chr != '\n' and counter < NUM_CHAR) { 
+                buffer[counter++] = chr & 0xFF;
+                sleep_ms(1);
+              chr = getchar_timeout_us(time_out_us);
         }
-        if(counter) {  
-            float p = 0;
-            bool negative = false;
-            cmatch motors_m, pidcoef_m, pid_switch_m, set_point_m;      
-
-            regex motors_exp("m[12]:-?[0-9f]");
-            regex_match (cstr,motors_m, motors_exp);
-
-            regex pidcoef_exp("[pid]([0-9]+.[0-9]+)");
-            regex_match (cstr,pidcoef_m, pidcoef_exp);
-
-            regex pid_switch_exp("pid-off|pid-on");
-            regex_match (cstr,pid_switch_m, pid_switch_exp);
-
-            regex set_point_exp("sp[12]:-?([0-9]+.[0-9]+)");
-            regex_match (cstr,set_point_m, set_point_exp);
-
-            if (!empty(motors_m)) {
-                printf("\nentered motor command: %s \n", cstr);
-                if(cstr[3] == '-') negative = true;
-                if(cstr[3+negative] == 'f') p = 1.0;
-                else p = ((int)cstr[3+negative] - '0')/10.0;
-                p = negative?-p:p;
-                if(cstr[1] == '1') m1.run(p);
-                else m2.run(p); 
-            } else if (!empty(pidcoef_m)){
-                printf("\nentered pid coeficient command: %s \n", cstr);
-                 char* s = cstr + 1;
-                float mag = atof(s);
-                if (cstr[0] == 'p'){
-                    // kp = mag;
-                    pid1.set_kp(mag);
-                    pid2.set_kp(mag);
-                } else if (cstr[0] == 'i'){
-                    // ki = mag;
-                    pid1.set_ki(mag);
-                    pid2.set_ki(mag); 
-                } else { // d
-                    // kd = mag;
-                    pid1.set_kd(mag);
-                    pid2.set_kd(mag);
-                }
-                printf("\n me1  p:%1.2f i:%1.2f d:%1.2f\n",pid1.get_kp(),pid1.get_ki(),pid1.get_kd());
-                printf("me2  p:%1.2f i:%1.2f d:%1.2f\n",pid1.get_kp(),pid1.get_ki(),pid1.get_kd());
-            } else if (!empty(set_point_m)){
-                printf("\nentered set point command: %s \n", cstr);
-                char* s = cstr + 4;
-                float mag = atof(s);
-                if(cstr[2]=='1') pid1.set_setpoint(mag);
-                else pid2.set_setpoint(mag);
-                printf("\nsp%c: %1.2f",cstr[2],mag);
-            } else if (!empty(pid_switch_m)){  
-                printf("commanded %s \n", cstr);              
-                pid_on = 7 - pid_switch_m.length();
-                if(pid_on) printf("pid on\n");
-                else {
-                    printf("pid off\n");
-                    m1.run(0);
-                    m2.run(0);
-                }
-                printf("\nme1  p:%1.2f i:%1.2f d:%1.2f\n",pid1.get_kp(),pid1.get_ki(),pid1.get_kd());
-                printf("me2  p:%1.2f i:%1.2f d:%1.2f\n",pid1.get_kp(),pid1.get_ki(),pid1.get_kd());
-            } else {
-                printf("\ndid not get that, you entered :  %s \n",cstr); 
-                for(auto c : cstr) if(c) printf("%1x ", c);                
-                printf("\n%1x\n",chr);
-
+        if(counter){
+            printf("%s\n",buffer);
+            printf("%d\n",chr);
             }
 
+        // if(counter) {  
+        //     float p = 0;
+        //     bool negative = false;
+        //     cmatch motors_m, pidcoef_m, pid_switch_m, set_point_m;      
 
-            for(int i = 0; i < NUM_CHAR; i++) cstr[i] = 0; // clear out char array 
-        }
+        //     regex motors_exp("m[12]:-?[0-9f]");
+        //     regex_match (buffer,motors_m, motors_exp);
+
+        //     regex pidcoef_exp("[pid]([0-9]+.[0-9]+)");
+        //     regex_match (buffer,pidcoef_m, pidcoef_exp);
+
+        //     regex pid_switch_exp("pid-off|pid-on");
+        //     regex_match (buffer,pid_switch_m, pid_switch_exp);
+
+        //     regex set_point_exp("sp[12]:-?([0-9]+.[0-9]+)");
+        //     regex_match (buffer,set_point_m, set_point_exp);
+
+        //     if (!empty(motors_m)) {
+        //         printf("\nentered motor command: %s \n", buffer);
+        //         if(buffer[3] == '-') negative = true;
+        //         if(buffer[3+negative] == 'f') p = 1.0;
+        //         else p = ((int)buffer[3+negative] - '0')/10.0;
+        //         p = negative?-p:p;
+        //         if(buffer[1] == '1') m1.run(p);
+        //         else m2.run(p); 
+        //     } else if (!empty(pidcoef_m)){
+        //         printf("\nentered pid coeficient command: %s \n", buffer);
+        //          char* s = buffer + 1;
+        //         float mag = atof(s);
+        //         if (buffer[0] == 'p'){
+        //             // kp = mag;
+        //             pid1.set_kp(mag);
+        //             pid2.set_kp(mag);
+        //         } else if (buffer[0] == 'i'){
+        //             // ki = mag;
+        //             pid1.set_ki(mag);
+        //             pid2.set_ki(mag); 
+        //         } else { // d
+        //             // kd = mag;
+        //             pid1.set_kd(mag);
+        //             pid2.set_kd(mag);
+        //         }
+        //         printf("\n me1  p:%1.2f i:%1.2f d:%1.2f\n",pid1.get_kp(),pid1.get_ki(),pid1.get_kd());
+        //         printf("me2  p:%1.2f i:%1.2f d:%1.2f\n",pid1.get_kp(),pid1.get_ki(),pid1.get_kd());
+        //     } else if (!empty(set_point_m)){
+        //         printf("\nentered set point command: %s \n", buffer);
+        //         char* s = buffer + 4;
+        //         float mag = atof(s);
+        //         if(buffer[2]=='1') pid1.set_setpoint(mag);
+        //         else pid2.set_setpoint(mag);
+        //         printf("\nsp%c: %1.2f",buffer[2],mag);
+        //     } else if (!empty(pid_switch_m)){  
+        //         printf("commanded %s \n", buffer);              
+        //         pid_on = 7 - pid_switch_m.length();
+        //         if(pid_on) printf("pid on\n");
+        //         else {
+        //             printf("pid off\n");
+        //             m1.run(0);
+        //             m2.run(0);
+        //         }
+        //         printf("\nme1  p:%1.2f i:%1.2f d:%1.2f\n",pid1.get_kp(),pid1.get_ki(),pid1.get_kd());
+        //         printf("me2  p:%1.2f i:%1.2f d:%1.2f\n",pid1.get_kp(),pid1.get_ki(),pid1.get_kd());
+        //     } else {
+        //         printf("\ndid not get that, you entered :  %s \n",buffer); 
+        //         for(auto c : buffer) if(c) printf("%1x ", c);                
+        //         printf("\n%1x\n",chr);
+
+        //     }
+
+        // }
 
 
 }

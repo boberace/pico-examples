@@ -17,7 +17,7 @@ target_link_libraries(maker_pi_mc PRIVATE
         )
 
 pico_enable_stdio_usb(maker_pi_mc 1)
-pico_enable_stdio_uart(maker_pi_mc 0)
+pico_enable_stdio_uart(maker_pi_mc 1)
 
 pico_add_extra_outputs(maker_pi_mc)
 
