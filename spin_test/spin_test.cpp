@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <math.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 #include "hardware/adc.h"
-#include <math.h>
 #include "hardware/pwm.h"
 #include "hardware/pio.h"
 #include "hardware/clocks.h"
@@ -12,7 +12,6 @@
 
 #include "ssd1306.h"
 #include "hall.pio.h"
-#include "bno055_i2c.h"
 
 #define PIN_STP_DIR 2 
 #define PIN_STP_PWM 3 
@@ -28,6 +27,9 @@
 
 #define I2C0_BUADRATE 400*1000
 i2c_inst_t *I2C_BNO085 = i2c0;
+
+#define BNO055_I2C_ADDR 0x29
+#define BNO055_CHIP_ID_ADDR 0x00
 
 #define POT_LOW_VALUE 0x016
 #define POT_HIGH_VALUE 0xfff
@@ -54,6 +56,19 @@ ssd1306_t disp; // create oled display instance
 uint stepper_pwm_slice_num = pwm_gpio_to_slice_num(PIN_STP_PWM); 
 
 #define pin_toggle(x) gpio_put(x, !gpio_get(x))
+
+struct vec3{
+    uint8_t data[6];
+    int16_t x, y, z;
+    uint8_t addr;
+};
+
+struct vec4{
+    uint8_t data[8];
+    int16_t w, x, y, z;
+    uint8_t addr;
+};
+
 void setup_i2c0(void);
 void setup_oled(void);
 void setup_leds(void);
@@ -65,8 +80,11 @@ void read_pot(void);
 void setup_stepper(void);
 void set_rps(float rps);
 void hall_blink(PIO pio, uint sm, uint offset, uint pin_hall, uint pin_led);
-void bno055status(void);
-u8 getcalib(void);
+void ndof_init(void);
+void get_data_v3(struct vec3 *t);
+void get_data_v4(struct vec4 *t);
+uint8_t ret_reg(uint8_t addr);
+void get_regs(uint8_t addr, uint8_t *regs, uint8_t qty );
 
 int display_previous_ms = 0;
 volatile bool display_timer_flagged = false;
@@ -76,14 +94,6 @@ const float conversion_factor = 3.3f / (1 << 12);
 float rps = 0;
 
 uint counter = 0;
-
-u8 u8reg, cmag, cacc, cgyr, csys;
-
-BNO055_RETURN_FUNCTION_TYPE comres = BNO055_ERROR;
-struct bno055_quaternion_t quaternion_wxyz; // s16 {w,x,y,z}
-struct bno055_accel_t accel_xyz;
-struct bno055_mag_t mag_xyz;
-struct bno055_gyro_t gyro_xyz;
 
 bool run = false;
 
@@ -109,6 +119,7 @@ int main() {
     setup_leds();
     setup_pot(); 
     setup_stepper();   
+    ndof_init();
 
     struct repeating_timer timer;
     add_repeating_timer_ms(-DELTA_DISP_MS, display_timer_callback, NULL, &timer);    
@@ -122,67 +133,32 @@ int main() {
     uint hall_offset = pio_add_program(PIO_HALL, &hall_program);    
     hall_blink(PIO_HALL, SM_HALL, hall_offset, PIN_HALL, PIN_LEDG);
 
-    printf("\n\n\n start\n");
-    comres = bno055_i2c_init(i2c0);
-    printf("\n bno055_i2c_init %04x\n",comres);
-    comres += bno055_set_operation_mode(BNO055_OPERATION_MODE_NDOF); //
-    // comres += bno055_set_operation_mode(BNO055_OPERATION_MODE_AMG); // 
-    printf("\nbno055_set_operation_mode %04x\n",comres);
-    sleep_us(30);
-
-    // u8 cs = 0x80;
-    // bno055_set_clk_src(cs);
-    // u8reg = cmag = cacc = cgyr = csys = 0;
+    struct vec3 eul;
+    eul.addr = 0x1A; // 4.3.27 EUL_DATA_X_LSB 0x1A 
+    struct vec4 qat;
+    qat.addr = 0x20; // 4.3.33 QUA_DATA_W_LSB 0x20 
+    struct vec3 lia;
+    lia.addr = 0x1A; // 4.3.41 LIA_DATA_X_LSB 0x28
+    struct vec3 grv;
+    grv.addr = 0x2E; // 4.3.47 GRV_DATA_X_LSB 0x2E 
 
     while (true) {
 
-        // sleep_ms(200);
         if(display_timer_flagged) {
             display_timer_flagged = false;
             read_pot();           
             rps = RT_MAXRPS*(pot_pct/100.0);
             set_rps(rps);
             update_display();        
-
-            if(comres == 0){                
-                printf("counts %d\n", ++counter);
-                                
-                if(csys == 3 and cacc == 3 and cgyr == 3 and cmag == 3){
-                    quaternion_wxyz.w = -1;
-                    quaternion_wxyz.x = -1;
-                    quaternion_wxyz.y = -1;
-                    quaternion_wxyz.z = -1;
-                    // comres += bno055_set_operation_mode(BNO055_OPERATION_MODE_NDOF);
-                    comres += bno055_read_quaternion_wxyz(&quaternion_wxyz);  
-                    printf("\nbno055_read_quaternion_wxyz %02x\n",comres);
-                    printf("w %04x, ",quaternion_wxyz.w );
-                    printf("x %04x, ",quaternion_wxyz.x );
-                    printf("y %04x, ",quaternion_wxyz.y );
-                    printf("z %04x\n",quaternion_wxyz.z );
-
-                    // comres += bno055_read_accel_xyz(&accel_xyz);
-                    // printf("bno055_read_accel_xyz %04x\n",comres);
-                    // printf("x %04x, ",accel_xyz.x );
-                    // printf("y %04x, ",accel_xyz.y );
-                    // printf("z %04x\n",accel_xyz.z );
-
-                    // comres += bno055_read_mag_xyz(&mag_xyz);
-                    // printf("bno055_read_mag_xyz %04x\n",comres);
-                    // printf("x %04x, ",mag_xyz.x );
-                    // printf("y %04x, ",mag_xyz.y );
-                    // printf("z %04x\n",mag_xyz.z );
-
-                    // comres += bno055_read_gyro_xyz(&gyro_xyz);
-                    // printf("bno055_read_gyro_xyz %04x\n",comres);
-                    // printf("x %04x, ",gyro_xyz.x );
-                    // printf("y %04x, ",gyro_xyz.y );
-                    // printf("z %04x\n",gyro_xyz.z );
-                } else {
-                    u8reg = cmag = cacc = cgyr = csys = -1;    
-                    u8 re = getcalib();                
-                    printf("\ncsys %d, cacc %d, cgyr %d, cmag %d, e %d \n", csys, cacc,  cgyr, cmag, re);
-                }
-            }            
+            
+            get_data_v3(&eul);  
+            printf("eul X: %d    Y: %d    Z: %d\n", eul.x, eul.y, eul.z);
+            get_data_v4(&qat);  
+            printf("qat X: %d    Y: %d    Z: %d    W: %d\n", qat.x, qat.y, qat.z, qat.w);
+            get_data_v3(&lia);  
+            printf("lia X: %d    Y: %d    Z: %d\n", lia.x, lia.y, lia.z);
+            get_data_v3(&grv);  
+            printf("grv X: %d    Y: %d    Z: %d\n", grv.x, grv.y, grv.z);
 
         }
 
@@ -314,40 +290,67 @@ void hall_blink(PIO pio, uint sm, uint offset, uint pin_hall, uint pin_led) {
     pio_sm_set_enabled(pio, sm, true);
 }
 
-void bno055status(void){
 
-    u8 u8reg = 0;
-    bno055_get_sys_stat_code(&u8reg);
-    printf("\nbno055_get_sys_stat_code %08b\n", u8reg);
+void ndof_init(void){
 
-    bno055_get_sys_error_code(&u8reg);
-    printf("\nbno055_get_sys_error_code %08b\n", u8reg);
+    uint8_t data[2];
 
-    bno055_get_sys_calib_stat(&u8reg);
-    printf("\nbno055_get_sys_calib_stat %08b\n", u8reg);
+    // Check to see if connection is correct
+    sleep_ms(600); // Add a short delay to help BNO005 boot up
 
-    bno055_get_selftest_mcu(&u8reg);
-    printf("\nbno055_get_selftest_mcu %08b\n", u8reg);
+    while(ret_reg(BNO055_CHIP_ID_ADDR) != 0xA0){
+        printf("Waiting for Chip Connection\n");
+        sleep_ms(100); 
+    }
 
-    bno055_get_selftest_accel(&u8reg);
-    printf("\nbno055_get_selftest_accel %08b\n", u8reg);
+    // // configure external oscillator    
+    // data[0] = 0x3D; // 4.3.61 OPR_MODE 0x3D
+    // data[1] = 0; // set operation mode to configure
+    // i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, data, 2, true);        
+    // while(ret_reg(0x38)&0b00000001) {// 4.3.57 SYS_CLK_STATUS 0x38 - wait to clear before setting
+    //     printf(" waiting for go to configure clock\n");
+    //     sleep_ms(100); 
+    // }
+    // data[0] = 0x3F; // 4.3.63 SYS_TRIGGER 0x3F
+    // data[1] = 1 << 7; // CLK_SEL 7 [0: Use internal oscillator [1: Use external oscillator. Set this bit only if external crystal is connected
+    // i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, data, 2, true);
 
-    bno055_get_selftest_mag(&u8reg);
-    printf("\nbno055_get_selftest_mag %08b\n", u8reg);
-
-    bno055_get_selftest_gyro(&u8reg);
-    printf("\nbno055_get_selftest_gyro %08b\n", u8reg);
-
+    // set operation mode to nine degrees of freedom (ndof)
+    data[0] = 0x3D; // 4.3.61 OPR_MODE 0x3D
+    data[1] = 0b00001100; // xxxx1100 ndof
+    i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, data, 2, true);
+    sleep_ms(100);
 }
 
-u8 getcalib(void){
+void get_data_v3(struct vec3 *t){
 
-    u8 re = bno055_get_sys_calib_stat(&u8reg);    
-    // printf("\nbno055_get_sys_calib_stat %08b\n", u8reg);
-    cmag =  (BNO055_MAG_CALIB_STAT_MSK & u8reg) >> BNO055_MAG_CALIB_STAT_POS;
-    cacc =  (BNO055_ACCEL_CALIB_STAT_MSK & u8reg) >> BNO055_ACCEL_CALIB_STAT_POS;
-    cgyr =  (BNO055_GYRO_CALIB_STAT_MSK & u8reg) >> BNO055_GYRO_CALIB_STAT_POS;
-    csys =  (BNO055_SYS_CALIB_STAT_MSK & u8reg) >> BNO055_SYS_CALIB_STAT_POS;
-    return re;
+    get_regs(t->addr, t->data, 6);
+    t->x = ((t->data[1]<<8) | t->data[0]);
+    t->y = ((t->data[3]<<8) | t->data[2]);
+    t->z = ((t->data[5]<<8) | t->data[4]);
+}
+
+void get_data_v4(struct vec4 *t){
+
+    get_regs(t->addr, t->data, 8);
+    t->w = ((t->data[1]<<8) | t->data[0]);
+    t->x = ((t->data[3]<<8) | t->data[2]);
+    t->y = ((t->data[5]<<8) | t->data[4]);
+    t->z = ((t->data[7]<<8) | t->data[6]);
+}
+
+uint8_t ret_reg(uint8_t addr){
+
+    uint8_t reg;
+    i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, &addr, 1, true);
+    i2c_read_blocking(I2C_BNO085, BNO055_I2C_ADDR, &reg, 1, false);
+
+    return reg;
+}
+
+void get_regs(uint8_t addr, uint8_t *regs, uint8_t qty ){
+
+    i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, &addr, 1, true);
+    i2c_read_blocking(I2C_BNO085, BNO055_I2C_ADDR, regs, qty, false);
 
 }
