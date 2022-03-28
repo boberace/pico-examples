@@ -55,7 +55,7 @@ int main() {
     qat.addr = 0x20; // 4.3.33 QUA_DATA_W_LSB 0x20 
 
     struct vec3 lia;
-    lia.addr = 0x1A; // 4.3.41 LIA_DATA_X_LSB 0x28
+    lia.addr = 0x28; // 4.3.41 LIA_DATA_X_LSB 0x28
 
     struct vec3 grv;
     grv.addr = 0x2E; // 4.3.47 GRV_DATA_X_LSB 0x2E 
