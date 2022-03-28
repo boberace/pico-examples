@@ -1,4 +1,8 @@
-#include "bno055_i2c.h"
+/*
+
+issues:  using external clock only good on first flash - zero output after reset
+
+*/
 #include <stdio.h>
 // #include <stdint.h>
 // #include <string.h>
@@ -6,72 +10,82 @@
 #include "hardware/i2c.h"
 
 #define I2C0_BUADRATE 400*1000
-#define PIN_I2C0_SDA 16
-#define PIN_I2C0_SCL 17
+#define PIN_I2C0_SDA 12
+#define PIN_I2C0_SCL 13
 i2c_inst_t *I2C_BNO085 = i2c0;
 
-void setup_i2c0(void);
+#define BNO055_I2C_ADDR 0x29
+#define BNO055_CHIP_ID_ADDR 0x00
 
-BNO055_RETURN_FUNCTION_TYPE com_rslt = BNO055_ERROR;
-u8 power_mode ;
-struct bno055_quaternion_t *quaternion_wxyz; // s16 {w,x,y,z}
+void setup_i2c0(void);
+// void bno055status(void);
+// u8 getcalib(void);
+void ndof_init(void);
 
 int main() {
     stdio_init_all();
     setup_i2c0();
+    ndof_init();
+   
+    uint8_t acc[6]; // Store data from the 6 acc registers
+    int16_t acc_x, acc_y, acc_z; // Combined 3 axis data
+    uint8_t acc_reg = 0x08; // 4.3.9 ACC_DATA_X_LSB 0x08
 
-    printf("\n\n\n start\n");
-    comres = bno055_i2c_init(i2c0);
-    printf("\n bno055_i2c_init %04x\n",comres);
-    comres += bno055_set_operation_mode(BNO055_OPERATION_MODE_NDOF); //
-    // comres += bno055_set_operation_mode(BNO055_OPERATION_MODE_AMG); // 
-    printf("\nbno055_set_operation_mode %04x\n",comres);
-    sleep_us(30);
+    uint8_t mag[6]; // Store data from the 6 mag registers
+    int16_t mag_x, mag_y, mag_z; // Combined 3 axis data
+    uint8_t mag_reg = 0x0E; // 4.3.15 MAG_DATA_X_LSB 0x0E    
 
-    // u8 cs = 0x80;
-    // bno055_set_clk_src(cs);
-    // u8reg = cmag = cacc = cgyr = csys = 0;
+    uint8_t gyr[6]; // Store data from the 6 gyr registers
+    int16_t gyr_x, gyr_y, gyr_z; // Combined 3 axis data
+    uint8_t gyr_reg = 0x14; // 4.3.21 GYR_DATA_X_LSB 0x14 
+
+    uint8_t eul[6]; // Store data from the 6 eul registers
+    int16_t eul_x, eul_y, eul_z; // Combined 3 axis data
+    uint8_t eul_reg = 0x1A; // 4.3.27 EUL_DATA_X_LSB 0x1A 
+
+    uint8_t qat[8]; // Store data from the 6 qat registers
+    int16_t qat_w, qat_x, qat_y, qat_z; // Combined 3 axis data
+    uint8_t qat_reg = 0x20; // 4.3.33 QUA_DATA_W_LSB 0x20 
+
     while(true){
+        
+        i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, &acc_reg, 1, true);
+        i2c_read_blocking(I2C_BNO085, BNO055_I2C_ADDR, acc, 6, false);
+        acc_x = ((acc[1]<<8) | acc[0]);
+        acc_y = ((acc[3]<<8) | acc[2]);
+        acc_z = ((acc[5]<<8) | acc[4]);
+        printf("accel X: %d    Y: %d    Z: %d\n", acc_x, acc_y, acc_z);
 
-            if(comres == 0){                
-                printf("counts %d\n", ++counter);
-                                
-                if(csys == 3 and cacc == 3 and cgyr == 3 and cmag == 3){
-                    quaternion_wxyz.w = -1;
-                    quaternion_wxyz.x = -1;
-                    quaternion_wxyz.y = -1;
-                    quaternion_wxyz.z = -1;
-                    // comres += bno055_set_operation_mode(BNO055_OPERATION_MODE_NDOF);
-                    comres += bno055_read_quaternion_wxyz(&quaternion_wxyz);  
-                    printf("\nbno055_read_quaternion_wxyz %02x\n",comres);
-                    printf("w %04x, ",quaternion_wxyz.w );
-                    printf("x %04x, ",quaternion_wxyz.x );
-                    printf("y %04x, ",quaternion_wxyz.y );
-                    printf("z %04x\n",quaternion_wxyz.z );
+        i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, &mag_reg, 1, true);
+        i2c_read_blocking(I2C_BNO085, BNO055_I2C_ADDR, mag, 6, false);
+        mag_x = ((mag[1]<<8) | mag[0]);
+        mag_y = ((mag[3]<<8) | mag[2]);
+        mag_z = ((mag[5]<<8) | mag[4]);        
+        printf("mag X: %d    Y: %d    Z: %d\n", mag_x, mag_y, mag_z);
 
-                    // comres += bno055_read_accel_xyz(&accel_xyz);
-                    // printf("bno055_read_accel_xyz %04x\n",comres);
-                    // printf("x %04x, ",accel_xyz.x );
-                    // printf("y %04x, ",accel_xyz.y );
-                    // printf("z %04x\n",accel_xyz.z );
+        i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, &gyr_reg, 1, true);
+        i2c_read_blocking(I2C_BNO085, BNO055_I2C_ADDR, gyr, 6, false);
+        gyr_x = ((gyr[1]<<8) | gyr[0]);
+        gyr_y = ((gyr[3]<<8) | gyr[2]);
+        gyr_z = ((gyr[5]<<8) | gyr[4]);
+        printf("gyr X: %d    Y: %d    Z: %d\n", gyr_x, gyr_y, gyr_z);
 
-                    // comres += bno055_read_mag_xyz(&mag_xyz);
-                    // printf("bno055_read_mag_xyz %04x\n",comres);
-                    // printf("x %04x, ",mag_xyz.x );
-                    // printf("y %04x, ",mag_xyz.y );
-                    // printf("z %04x\n",mag_xyz.z );
+        i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, &eul_reg, 1, true);
+        i2c_read_blocking(I2C_BNO085, BNO055_I2C_ADDR, eul, 6, false);
+        eul_x = ((eul[1]<<8) | eul[0]);
+        eul_y = ((eul[3]<<8) | eul[2]);
+        eul_z = ((eul[5]<<8) | eul[4]);
+        printf("eul X: %d    Y: %d    Z: %d\n", eul_x, eul_y, eul_z);
 
-                    // comres += bno055_read_gyro_xyz(&gyro_xyz);
-                    // printf("bno055_read_gyro_xyz %04x\n",comres);
-                    // printf("x %04x, ",gyro_xyz.x );
-                    // printf("y %04x, ",gyro_xyz.y );
-                    // printf("z %04x\n",gyro_xyz.z );
-                } else {
-                    u8reg = cmag = cacc = cgyr = csys = -1;    
-                    u8 re = getcalib();                
-                    printf("\ncsys %d, cacc %d, cgyr %d, cmag %d, e %d \n", csys, cacc,  cgyr, cmag, re);
-                }
-            }
+        i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, &qat_reg, 1, true);
+        i2c_read_blocking(I2C_BNO085, BNO055_I2C_ADDR, qat, 8, false);
+        qat_w = ((qat[1]<<8) | qat[0]);
+        qat_x = ((qat[3]<<8) | qat[2]);
+        qat_y = ((qat[5]<<8) | qat[4]);
+        qat_z = ((qat[7]<<8) | qat[6]);
+        printf("qat X: %d    Y: %d    Z: %d    W: %d\n", qat_x, qat_y, qat_z, qat_w);
+
+        sleep_ms(300);            
 
     }
     return 0;
@@ -85,3 +99,28 @@ void setup_i2c0(void){
     gpio_pull_up(PIN_I2C0_SCL);
 }
 
+
+
+void ndof_init(void){
+    // Check to see if connection is correct
+    sleep_ms(1000); // Add a short delay to help BNO005 boot up
+    uint8_t reg = BNO055_CHIP_ID_ADDR;
+    uint8_t chipID[1];
+    i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, &reg, 1, true);
+    i2c_read_blocking(I2C_BNO085, BNO055_I2C_ADDR, chipID, 1, false);
+
+    if(chipID[0] != 0xA0){
+        while(1){
+            printf("Chip ID Not Correct - Check Connection!");
+            sleep_ms(5000);
+        }
+    }
+
+    uint8_t data[2];
+
+    // Set operation to ndof
+    data[0] = 0x3D; // 4.3.61 OPR_MODE 0x3D
+    data[1] = 0b00001100; // xxxx1100 ndof
+    i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, data, 2, true);
+    sleep_ms(100);
+}

@@ -25,8 +25,8 @@
 #include "pico/binary_info.h"
 #include "hardware/i2c.h"
 
-#define I2C_SDA_PIN 16
-#define I2C_SCL_PIN 17
+#define I2C_SDA_PIN 12
+#define I2C_SCL_PIN 13
 #define I2C i2c0 // depends on pin selection for either zero or one
 
 // I2C reserves some addresses for special purposes. We exclude these from the scan.
