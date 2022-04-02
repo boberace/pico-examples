@@ -1,113 +1,87 @@
 /*
 
-
+Docs:
+DS: BNO080/85/86 Data Sheet
+RM: SH-2 Reference Manual v1.2
+TP: Sensor Hub Transport Protocol R 1.7
 
 */
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
+#include <string.h>
 
+#include "sh2.h"
+#include "sh2_SensorValue.h"
+#include "sh2_err.h"
 
-#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
-# define DEBUG_PRINT printf 
+# define DEBUG_PRINT(...) printf(__VA_ARGS__)
 #else
-# define DEBUG_PRINT
+# define DEBUG_PRINT(...)
 #endif
 
-#define I2C0_BUADRATE 400*1000
-#define PIN_I2C0_SDA 12
-#define PIN_I2C0_SCL 13
+#define PIN_BNO085_INT 15
+#define PIN_BNO085_RST 16
+
+#define I2C0_BUADRATE 100*1000
+#define PIN_I2C0_SDA 4
+#define PIN_I2C0_SCL 5
 i2c_inst_t *I2C_BNO085 = i2c0;
+#define I2C_BUFFER_LIMIT 32
 
 #define BNO085_I2C_ADDR 0x4A
 
-struct vec3{
-    uint8_t data[6];
-    int16_t x, y, z;
-    uint8_t addr;
-};
+sh2_Hal_t sh2_hal;
 
-struct vec4{
-    uint8_t data[8];
-    int16_t w, x, y, z;
-    uint8_t addr;
-};
+#define CARGO_SIZE  SH2_HAL_MAX_PAYLOAD_IN // I2C_BUFFER_LIMIT
+uint8_t shtp_header[4];
+uint8_t shtp_cargo[CARGO_SIZE]; 	
+bool reset_occurred = false;
+sh2_ProductIds_t prodIds; ///< The product IDs returned by the sensor
+
+int16_t ret = 0;
+
+//DS: 1.3.1 SHTP - The BNO08X supports 6 channels
+const uint8_t CHANNEL_COMMAND = 0;
+const uint8_t CHANNEL_EXECUTABLE = 1;
+const uint8_t CHANNEL_CONTROL = 2;
+const uint8_t CHANNEL_REPORTS = 3;
+const uint8_t CHANNEL_WAKE_REPORTS = 4;
+const uint8_t CHANNEL_GYRO = 5;
+
 
 void setup_i2c0(void);
-void ndof_init(void);
-void get_data_v3(struct vec3 *t);
-void get_data_v4(struct vec4 *t);
-uint8_t ret_reg(uint8_t addr);
-void get_regs(uint8_t addr, uint8_t *regs, uint8_t qty );
+int i2c_open(sh2_Hal_t *self);
+void i2c_close(sh2_Hal_t *self);
+int i2c_read(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len, uint32_t *t_us);
+int i2c_write(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len);
+uint32_t getTimeUs(sh2_Hal_t *self);
+static void hal_callback(void *cookie, sh2_AsyncEvent_t *pEvent);
+bool bno085_init_i2c(void);
 
-//Global Variables
-uint8_t shtpHeader[4]; 
-uint8_t shtpData[2^15];
-uint8_t sequenceNumber[6] = {0, 0, 0, 0, 0, 0}; 
-uint8_t commandSequenceNumber = 0;				
-uint32_t metaData[9]; //Figure 30: Metadata Record Format – Revision 3			
-
-int main() {
+int main() {    
     stdio_init_all();
+    DEBUG_PRINT("\nStarted\n");
     setup_i2c0();
-    ndof_init();
+    bool r = bno085_init_i2c();
+    if(r == false){
+        printf(" bno0855 will not initialize\n");
+        return false;
+    } else {
+        printf(" bno0855 has initialized\n");
+    }
 
-    DEBUG_PRINT("test debug print %d, %02x", 255,255);
+  for (int n = 0; n < prodIds.numEntries; n++) {
+    printf("Part %d\n", prodIds.entry[n].swPartNumber);
+    printf(": Version %d.%d.%d\n", prodIds.entry[n].swVersionMajor, prodIds.entry[n].swVersionMinor, prodIds.entry[n].swVersionPatch);
+    printf(" Build %d\n", prodIds.entry[n].swBuildNumber);
+  }
+    
 
-
-    // struct vec3 acc;
-    // acc.addr = 0x08; // 4.3.9 ACC_DATA_X_LSB 0x08  
-
-    // struct vec3 mag;
-    // mag.addr = 0x0E; // 4.3.15 MAG_DATA_X_LSB 0x0E    
-
-    // struct vec3 gyr;
-    // gyr.addr = 0x14; // 4.3.21 GYR_DATA_X_LSB 0x14 
-
-    // struct vec3 eul;
-    // eul.addr = 0x1A; // 4.3.27 EUL_DATA_X_LSB 0x1A 
-
-    // struct vec4 qat;
-    // qat.addr = 0x20; // 4.3.33 QUA_DATA_W_LSB 0x20 
-
-    // struct vec3 lia;
-    // lia.addr = 0x28; // 4.3.41 LIA_DATA_X_LSB 0x28
-
-    // struct vec3 grv;
-    // grv.addr = 0x2E; // 4.3.47 GRV_DATA_X_LSB 0x2E 
-
-    while(false){     
-
-        // uint8_t calib_stat =  ret_reg(0x35); //4.3.54 CALIB_STAT 0x35
-        // if(calib_stat != 0b11111111){
-        //     printf("SYS %01x\n", (calib_stat&0b11000000) >> 6);
-        //     printf("GYR %01x\n", (calib_stat&0b00110000) >> 4);
-        //     printf("ACC %01x\n", (calib_stat&0b00001100) >> 2);
-        //     printf("MAG %01x\n", (calib_stat&0b00000011) );
-        // }
-
-        // get_data_v3(&acc);
-        // printf("accel X: %d    Y: %d    Z: %d\n", acc.x, acc.y, acc.z);
-
-        // get_data_v3(&mag);    
-        // printf("mag X: %d    Y: %d    Z: %d\n", mag.x, mag.y, mag.z);
-
-        // get_data_v3(&gyr);  
-        // printf("gyr X: %d    Y: %d    Z: %d\n", gyr.x, gyr.y, gyr.z);
-
-        // get_data_v3(&eul);  
-        // printf("eul X: %d    Y: %d    Z: %d\n", eul.x, eul.y, eul.z);
-
-        // get_data_v4(&qat);  
-        // printf("qat X: %d    Y: %d    Z: %d    W: %d\n", qat.x, qat.y, qat.z, qat.w);
-
-        // get_data_v3(&lia);  
-        // printf("lia X: %d    Y: %d    Z: %d\n", lia.x, lia.y, lia.z);
-
-        // get_data_v3(&grv);  
-        // printf("grv X: %d    Y: %d    Z: %d\n", grv.x, grv.y, grv.z);
+     while(false){     
 
         sleep_ms(300);            
 
@@ -123,73 +97,156 @@ void setup_i2c0(void){
     gpio_pull_up(PIN_I2C0_SCL);
 }
 
-void ndof_init(void){
+static void hal_callback(void *cookie, sh2_AsyncEvent_t *pEvent) {
+  // If we see a reset, set a flag so that sensors will be reconfigured.
+  if (pEvent->eventId == SH2_RESET) {
+    // printfln("Reset!");
+    reset_occurred = true;
+  }
+}
 
-    uint8_t data[2];
+bool bno085_init_i2c(void){
 
-    // Check to see if connection is correct
-    sleep_ms(600); // Add a short delay to help BNO085 boot up
+    // interupt pin
+    gpio_init(PIN_BNO085_INT);
+    gpio_set_function(PIN_BNO085_INT, GPIO_OUT);
+    gpio_init(PIN_BNO085_RST);
+    gpio_set_function(PIN_BNO085_RST, GPIO_OUT);
 
-    shtpData[0] = 0xF9; //Request the product ID and reset info
-	shtpData[1] = 0;
-    get_regs(0xF9, shtpData, 2);
-
-    while(shtpData[0] != 0xF8){
-        printf("Waiting for Chip Connection\n");
-        sleep_ms(100); 
-        get_regs(0xF9, shtpData, 2);
+    uint8_t dummy;
+    ret = i2c_read_blocking(I2C_BNO085, BNO085_I2C_ADDR, &dummy, 1, false);
+    if(ret < 1){
+         printf(" BNO085 will not connect\n");
+         return false;
     }
-    DEBUG_PRINT("connected");
+        DEBUG_PRINT("i2c_read_blocking dummy test if connected %d\n", ret);
 
+    sh2_hal.open = i2c_open;
+    sh2_hal.close = i2c_close;
+    sh2_hal.read = i2c_read;
+    sh2_hal.write = i2c_write;
+    sh2_hal.getTimeUs = getTimeUs; 
 
-    // // configure for external oscillator    
-    // data[0] = 0x3D; // 4.3.61 OPR_MODE 0x3D
-    // data[1] = 0; // set operation mode to configure
-    // i2c_write_blocking(I2C_BNO085, BNO085_I2C_ADDR, data, 2, true);        
-    // while(ret_reg(0x38)&0b00000001) {// 4.3.57 SYS_CLK_STATUS 0x38 - wait to clear before setting
-    //     printf(" waiting for go to configure clock\n");
-    //     sleep_ms(100); 
-    // }
-    // data[0] = 0x3F; // 4.3.63 SYS_TRIGGER 0x3F
-    // data[1] = 1 << 7; // CLK_SEL 7 [0: Use internal oscillator [1: Use external oscillator. Set this bit only if external crystal is connected
-    // i2c_write_blocking(I2C_BNO085, BNO085_I2C_ADDR, data, 2, true);
+    // hardware reset
+    gpio_put(PIN_BNO085_RST, 1);
+    sleep_ms(10);
+    gpio_put(PIN_BNO085_RST, 0);
+    sleep_ms(10);
+    gpio_put(PIN_BNO085_RST, 1);
+    sleep_ms(10);  
 
-    // set operation mode to nine degrees of freedom (ndof)
-    data[0] = 0x3D; // 4.3.61 OPR_MODE 0x3D
-    data[1] = 0b00001100; // xxxx1100 ndof
-    i2c_write_blocking(I2C_BNO085, BNO085_I2C_ADDR, data, 2, true);
+    int status;
+    status = sh2_open(&sh2_hal, hal_callback, NULL);
+    if (status != SH2_OK) { 
+        return false;
+    }        
+    DEBUG_PRINT("---------------------------------------------------- sh2_open \n");
+    memset(&prodIds, 0, sizeof(prodIds));
+    status = sh2_getProdIds(&prodIds);
+    if (status != SH2_OK) {
+        return false;
+    }
+    DEBUG_PRINT("------------------------------------------------ sh2_getProdIds \n");
+
+    return true;
+}
+
+int i2c_open(sh2_Hal_t *self){  
+    DEBUG_PRINT("************************************ i2c_open \n");
+    // send a software reset = { Length LSB, Length LSB, Channel, SeqNum, data }
+    uint8_t softreset_pkt[5] = { 5, 0, CHANNEL_EXECUTABLE, 0, 1}; // DS: Figure 1-27: 1 – reset
+    ret = i2c_write_blocking(I2C_BNO085,BNO085_I2C_ADDR, softreset_pkt, 5, false );
+        DEBUG_PRINT("i2c_write_blocking softreset_pkt %d\n", ret); 
+    if(ret < 1) return -1;
+
+    ret = i2c_read_blocking(I2C_BNO085,BNO085_I2C_ADDR, shtp_header, 4, false );
+        DEBUG_PRINT("i2c_read_blocking shtp_header %d\n", ret);
+    if(ret < 1) return -1;
+    uint16_t length = (shtp_header[1] << 8) |  shtp_header[0];
+    length &= ~(1 << 15);
+        DEBUG_PRINT("shtp_header 0 : 0x%02x, 0b%08b\n", shtp_header[0], shtp_header[0]);
+        DEBUG_PRINT("shtp_header 1 : 0x%02x, 0b%08b\n", shtp_header[1], shtp_header[1]);
+        DEBUG_PRINT("shtp_header 2 : 0x%02x, 0b%08b\n", shtp_header[2], shtp_header[2]);
+        DEBUG_PRINT("shtp_header 3 : 0x%02x, 0b%08b\n", shtp_header[3], shtp_header[3]);
+        DEBUG_PRINT("length %d\n", length);
     sleep_ms(100);
+    i2c_read(&sh2_hal, shtp_cargo, length, NULL);
+    sleep_ms(100);
+
+    return 0;
 }
 
-void get_data_v3(struct vec3 *t){
-
-    get_regs(t->addr, t->data, 6);
-    t->x = ((t->data[1]<<8) | t->data[0]);
-    t->y = ((t->data[3]<<8) | t->data[2]);
-    t->z = ((t->data[5]<<8) | t->data[4]);
+void i2c_close(sh2_Hal_t *self){
+    DEBUG_PRINT("************************************ i2c_close \n");
 }
 
-void get_data_v4(struct vec4 *t){
+int i2c_read(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len, uint32_t *t_us){
+    DEBUG_PRINT("************************************ i2c_read \n");
+    ret = i2c_read_blocking(I2C_BNO085,BNO085_I2C_ADDR, shtp_header, 4, false );
+        DEBUG_PRINT("i2c_read_blocking shtp_header %d\n", ret);
+    if(ret != 4) return 0;
 
-    get_regs(t->addr, t->data, 8);
-    t->w = ((t->data[1]<<8) | t->data[0]);
-    t->x = ((t->data[3]<<8) | t->data[2]);
-    t->y = ((t->data[5]<<8) | t->data[4]);
-    t->z = ((t->data[7]<<8) | t->data[6]);
+    uint16_t length = (shtp_header[1] << 8) |  shtp_header[0];
+    length &= ~(1 << 15);
+        DEBUG_PRINT("shtp_header 0 : 0x%02x, 0b%08b\n", shtp_header[0], shtp_header[0]);
+        DEBUG_PRINT("shtp_header 1 : 0x%02x, 0b%08b\n", shtp_header[1], shtp_header[1]);
+        DEBUG_PRINT("shtp_header 2 : 0x%02x, 0b%08b\n", shtp_header[2], shtp_header[2]);
+        DEBUG_PRINT("shtp_header 3 : 0x%02x, 0b%08b\n", shtp_header[3], shtp_header[3]);
+        DEBUG_PRINT("length %d\n", length);
+  
+    if(length){ // no zero reads    
+
+        if(length <= CARGO_SIZE){ // fill the cargo
+            
+            if(length > len) length = len;  // do not get more than asked if more is available
+
+            ret = i2c_read_blocking(I2C_BNO085,BNO085_I2C_ADDR, pBuffer, length, false);                
+                DEBUG_PRINT("i2c_read_blocking pBuffer %d\n", ret);
+            if(ret != length) return 0;
+
+        } else { // fill up the cargo, flush the rest
+
+            uint8_t flush_cargo[CARGO_SIZE];
+
+            ret = i2c_read_blocking(I2C_BNO085,BNO085_I2C_ADDR, pBuffer, CARGO_SIZE, false);                
+                DEBUG_PRINT("i2c_read_blocking pBuffer %d\n", ret);   
+            if(ret != CARGO_SIZE) return 0;
+            
+            length -= CARGO_SIZE;
+
+            while(length > 0){
+                    if(length > CARGO_SIZE){ 
+                        ret = i2c_read_blocking(I2C_BNO085,BNO085_I2C_ADDR, flush_cargo, CARGO_SIZE, false);
+                            DEBUG_PRINT("i2c_read_blocking flush_cargo %d\n", ret); 
+                        if(ret != CARGO_SIZE) return 0;
+                        length -= CARGO_SIZE;
+                    } else {
+                        ret = i2c_read_blocking(I2C_BNO085,BNO085_I2C_ADDR, flush_cargo, length, false);
+                            DEBUG_PRINT("i2c_read_blocking flush_cargo %d\n", ret);
+                        if(ret != length) return 0;
+                        length = 0;
+                    }
+            }
+
+        }
+    }
+     *t_us = to_us_since_boot(get_absolute_time());
+
+    return length;
 }
 
-uint8_t ret_reg(uint8_t addr){
+int i2c_write(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len){
+    DEBUG_PRINT("************************************ i2c_write \n");
+    uint16_t length = (len > SH2_HAL_MAX_TRANSFER_OUT)?SH2_HAL_MAX_TRANSFER_OUT:len;
 
-    uint8_t reg;
-    i2c_write_blocking(I2C_BNO085, BNO085_I2C_ADDR, &addr, 1, true);
-    i2c_read_blocking(I2C_BNO085, BNO085_I2C_ADDR, &reg, 1, false);
+    ret = i2c_write_blocking(I2C_BNO085,BNO085_I2C_ADDR, pBuffer, length, false );
+        DEBUG_PRINT("i2c_write_blocking softreset_pkt %d\n", ret);
+    if(ret != length) return 0;
 
-    return reg;
+    return ret;
 }
 
-void get_regs(uint8_t addr, uint8_t *regs, uint8_t qty ){
-
-    i2c_write_blocking(I2C_BNO085, BNO085_I2C_ADDR, &addr, 1, true);
-    i2c_read_blocking(I2C_BNO085, BNO085_I2C_ADDR, regs, qty, false);
-
+uint32_t getTimeUs(sh2_Hal_t *self){
+    DEBUG_PRINT("************************************ getTimeUs \n");
+    return to_us_since_boot(get_absolute_time());
 }

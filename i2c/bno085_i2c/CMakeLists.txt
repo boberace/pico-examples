@@ -2,6 +2,10 @@ add_executable(bno085_i2c)
 
 target_sources(bno085_i2c PRIVATE 
         main.c
+        sh2.c
+        sh2_SensorValue.c
+        sh2_util.c
+        shtp.c
         )
 
 target_link_libraries(bno085_i2c PRIVATE
