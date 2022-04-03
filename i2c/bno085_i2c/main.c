@@ -25,13 +25,13 @@ TP: Sensor Hub Transport Protocol R 1.7
 #endif
 
 // define interrupt and reset pins
-#define PIN_BNO085_INT 15
-#define PIN_BNO085_RST 16
+#define PIN_BNO085_INT 28 //15
+#define PIN_BNO085_RST 27 //16
 
 // define i2c pararmeters and pins
 #define I2C0_BUADRATE 100*1000
-#define PIN_I2C0_SDA 4
-#define PIN_I2C0_SCL 5
+#define PIN_I2C0_SDA 16 //4
+#define PIN_I2C0_SCL 17 //5
 i2c_inst_t *I2C_BNO085 = i2c0;
 #define BNO085_I2C_ADDR 0x4A
 
@@ -128,7 +128,7 @@ bool bno085_init_i2c(void){
 
     // interupt and RST pins
     gpio_init(PIN_BNO085_INT);
-    gpio_set_function(PIN_BNO085_INT, GPIO_OUT);
+    gpio_set_function(PIN_BNO085_INT, GPIO_IN);
     gpio_init(PIN_BNO085_RST);
     gpio_set_function(PIN_BNO085_RST, GPIO_OUT);
 
