@@ -12,6 +12,7 @@
 
 #include "ssd1306.h"
 #include "hall.pio.h"
+#include "bno085_i2c.h"
 
 #define PIN_STP_DIR 2 
 #define PIN_STP_PWM 3 
@@ -25,8 +26,17 @@
 #define PIN_I2C_SCL 17
 #define PIN_POT 26
 
+// define interrupt and reset pins
+#define PIN_BNO085_INT 27 // 15
+#define PIN_BNO085_RST 28 // 16
+
+bno085_i2c bno085(PIN_BNO085_RST, PIN_BNO085_INT);
+
+sh2_SensorValue_t sensor_value;
+
 #define I2C0_BUADRATE 400*1000
 i2c_inst_t *I2C_BNO085 = i2c0;
+i2c_inst_t *bno085_i2c_instance = i2c0;
 
 #define BNO055_I2C_ADDR 0x29
 #define BNO055_CHIP_ID_ADDR 0x00
@@ -57,18 +67,6 @@ uint stepper_pwm_slice_num = pwm_gpio_to_slice_num(PIN_STP_PWM);
 
 #define pin_toggle(x) gpio_put(x, !gpio_get(x))
 
-struct vec3{
-    uint8_t data[6];
-    int16_t x, y, z;
-    uint8_t addr;
-};
-
-struct vec4{
-    uint8_t data[8];
-    int16_t w, x, y, z;
-    uint8_t addr;
-};
-
 void setup_i2c0(void);
 void setup_oled(void);
 void setup_leds(void);
@@ -80,11 +78,7 @@ void read_pot(void);
 void setup_stepper(void);
 void set_rps(float rps);
 void hall_blink(PIO pio, uint sm, uint offset, uint pin_hall, uint pin_led);
-void ndof_init(void);
-void get_data_v3(struct vec3 *t);
-void get_data_v4(struct vec4 *t);
-uint8_t ret_reg(uint8_t addr);
-void get_regs(uint8_t addr, uint8_t *regs, uint8_t qty );
+void setReports(void);
 
 int display_previous_ms = 0;
 volatile bool display_timer_flagged = false;
@@ -112,6 +106,8 @@ void hall_isr1()
     pio_interrupt_clear(PIO_HALL, 1);
 }
 
+float v_i, v_j, v_k, v_r, v_temp = 0;
+
 int main() {
     stdio_init_all();
     setup_i2c0();
@@ -119,7 +115,6 @@ int main() {
     setup_leds();
     setup_pot(); 
     setup_stepper();   
-    ndof_init();
 
     struct repeating_timer timer;
     add_repeating_timer_ms(-DELTA_DISP_MS, display_timer_callback, NULL, &timer);    
@@ -133,14 +128,18 @@ int main() {
     uint hall_offset = pio_add_program(PIO_HALL, &hall_program);    
     hall_blink(PIO_HALL, SM_HALL, hall_offset, PIN_HALL, PIN_LEDG);
 
-    struct vec3 eul;
-    eul.addr = 0x1A; // 4.3.27 EUL_DATA_X_LSB 0x1A 
-    struct vec4 qat;
-    qat.addr = 0x20; // 4.3.33 QUA_DATA_W_LSB 0x20 
-    struct vec3 lia;
-    lia.addr = 0x28; // 4.3.41 LIA_DATA_X_LSB 0x28
-    struct vec3 grv;
-    grv.addr = 0x2E; // 4.3.47 GRV_DATA_X_LSB 0x2E 
+    if(bno085.connect_i2c(bno085_i2c_instance)) printf(" bno0855 has initialized\n");
+    else printf(" bno0855 NOT initialize\n");
+
+    for (int n = 0; n < bno085.prodIds.numEntries; n++) { // sh2.h line 60
+    printf("Part %d\n", bno085.prodIds.entry[n].swPartNumber);
+    printf(": Version %d.%d.%d\n",  bno085.prodIds.entry[n].swVersionMajor, 
+                                    bno085.prodIds.entry[n].swVersionMinor, 
+                                    bno085.prodIds.entry[n].swVersionPatch);
+    printf(" Build %d\n", bno085.prodIds.entry[n].swBuildNumber);
+    }  
+
+    setReports();   
 
     while (true) {
 
@@ -151,15 +150,32 @@ int main() {
             set_rps(rps);
             update_display();        
             
-            get_data_v3(&eul);  
-            printf("eul X: %d    Y: %d    Z: %d\n", eul.x, eul.y, eul.z);
-            get_data_v4(&qat);  
-            printf("qat X: %d    Y: %d    Z: %d    W: %d\n", qat.x, qat.y, qat.z, qat.w);
-            get_data_v3(&lia);  
-            printf("lia X: %d    Y: %d    Z: %d\n", lia.x, lia.y, lia.z);
-            get_data_v3(&grv);  
-            printf("grv X: %d    Y: %d    Z: %d\n", grv.x, grv.y, grv.z);
+        }
 
+        if (bno085.getSensorEvent(&sensor_value)) {
+
+            switch (sensor_value.sensorId) {            
+            case SH2_ROTATION_VECTOR:
+                
+                v_i = sensor_value.un.gameRotationVector.i;
+                v_j = sensor_value.un.gameRotationVector.j;
+                v_k = sensor_value.un.gameRotationVector.k;
+                v_r = sensor_value.un.gameRotationVector.real;
+                
+                if(v_k > 0.1 && v_temp < 0){
+                    gpio_put(PIN_LEDB, 0);
+                } else {
+                    gpio_put(PIN_LEDB, 1);
+                }
+                v_temp = v_k;
+                // printf("Rotation Vector:  i:%f, j:%f, k:%f,  r:%f\n", v_i, v_j, v_k, v_r);
+            break;
+            }
+        }
+
+        if (bno085.wasReset()) {
+            printf("sensor was reset ");
+            setReports();
         }
 
     }
@@ -290,67 +306,9 @@ void hall_blink(PIO pio, uint sm, uint offset, uint pin_hall, uint pin_led) {
     pio_sm_set_enabled(pio, sm, true);
 }
 
-
-void ndof_init(void){
-
-    uint8_t data[2];
-
-    // Check to see if connection is correct
-    sleep_ms(600); // Add a short delay to help BNO005 boot up
-
-    while(ret_reg(BNO055_CHIP_ID_ADDR) != 0xA0){
-        printf("Waiting for Chip Connection\n");
-        sleep_ms(100); 
-    }
-
-    // // configure external oscillator    
-    // data[0] = 0x3D; // 4.3.61 OPR_MODE 0x3D
-    // data[1] = 0; // set operation mode to configure
-    // i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, data, 2, true);        
-    // while(ret_reg(0x38)&0b00000001) {// 4.3.57 SYS_CLK_STATUS 0x38 - wait to clear before setting
-    //     printf(" waiting for go to configure clock\n");
-    //     sleep_ms(100); 
-    // }
-    // data[0] = 0x3F; // 4.3.63 SYS_TRIGGER 0x3F
-    // data[1] = 1 << 7; // CLK_SEL 7 [0: Use internal oscillator [1: Use external oscillator. Set this bit only if external crystal is connected
-    // i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, data, 2, true);
-
-    // set operation mode to nine degrees of freedom (ndof)
-    data[0] = 0x3D; // 4.3.61 OPR_MODE 0x3D
-    data[1] = 0b00001100; // xxxx1100 ndof
-    i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, data, 2, true);
-    sleep_ms(100);
-}
-
-void get_data_v3(struct vec3 *t){
-
-    get_regs(t->addr, t->data, 6);
-    t->x = ((t->data[1]<<8) | t->data[0]);
-    t->y = ((t->data[3]<<8) | t->data[2]);
-    t->z = ((t->data[5]<<8) | t->data[4]);
-}
-
-void get_data_v4(struct vec4 *t){
-
-    get_regs(t->addr, t->data, 8);
-    t->w = ((t->data[1]<<8) | t->data[0]);
-    t->x = ((t->data[3]<<8) | t->data[2]);
-    t->y = ((t->data[5]<<8) | t->data[4]);
-    t->z = ((t->data[7]<<8) | t->data[6]);
-}
-
-uint8_t ret_reg(uint8_t addr){
-
-    uint8_t reg;
-    i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, &addr, 1, true);
-    i2c_read_blocking(I2C_BNO085, BNO055_I2C_ADDR, &reg, 1, false);
-
-    return reg;
-}
-
-void get_regs(uint8_t addr, uint8_t *regs, uint8_t qty ){
-
-    i2c_write_blocking(I2C_BNO085, BNO055_I2C_ADDR, &addr, 1, true);
-    i2c_read_blocking(I2C_BNO085, BNO055_I2C_ADDR, regs, qty, false);
-
+void setReports(void) {
+  printf("Setting desired reports\n");
+  if (! bno085.enableReport(SH2_ROTATION_VECTOR, 100)) { //sh2.h line 93, RM: 2.2.4 Rotation Vector
+    printf("Could not enable rotation vector\n");
+  }
 }
