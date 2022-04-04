@@ -1,7 +1,8 @@
 add_executable(bno085_i2c)
 
 target_sources(bno085_i2c PRIVATE 
-        main.c
+        main.cpp
+        bno085_i2c.cpp
         sh2.c
         sh2_SensorValue.c
         sh2_util.c
@@ -11,7 +12,6 @@ target_sources(bno085_i2c PRIVATE
 target_link_libraries(bno085_i2c PRIVATE
         pico_stdlib
         pico_multicore
-        hardware_pio
         hardware_i2c
         hardware_adc
         hardware_pwm
