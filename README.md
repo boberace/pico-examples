@@ -169,7 +169,7 @@ App|Description
 
 App|Description
 ---|---
-[spin_test](spin_test) | Rotary table with slip ring and oled display.  For testing sensors while in spin.
+[st_bno055](spin_tests/st_bno085) | Rotary table with slip ring and oled display.  For testing sensors while in spin.
 
 ### System
 

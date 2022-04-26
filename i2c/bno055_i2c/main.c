@@ -8,8 +8,8 @@
 #include "hardware/i2c.h"
 
 #define I2C0_BUADRATE 400*1000
-#define PIN_I2C0_SDA 12
-#define PIN_I2C0_SCL 13
+#define PIN_I2C0_SDA 16 //12
+#define PIN_I2C0_SCL 17 //13
 i2c_inst_t *I2C_BNO085 = i2c0;
 
 #define BNO055_I2C_ADDR 0x29
