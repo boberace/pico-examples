@@ -1,9 +1,9 @@
-add_executable(spin_test)
+add_executable(st_bno085)
 
-pico_generate_pio_header(spin_test ${CMAKE_CURRENT_LIST_DIR}/hall.pio)
+pico_generate_pio_header(st_bno085 ${CMAKE_CURRENT_LIST_DIR}/hall.pio)
 
-target_sources(spin_test PRIVATE 
-        spin_test.cpp
+target_sources(st_bno085 PRIVATE 
+        st_bno085.cpp
         ssd1306.c
         bno085_i2c.cpp
         sh2.c
@@ -12,7 +12,7 @@ target_sources(spin_test PRIVATE
         shtp.c
         )
 
-target_link_libraries(spin_test PRIVATE
+target_link_libraries(st_bno085 PRIVATE
         pico_stdlib
         pico_multicore
         hardware_pio
@@ -22,9 +22,9 @@ target_link_libraries(spin_test PRIVATE
         hardware_irq
         )
 
-pico_enable_stdio_usb(spin_test 1)
+pico_enable_stdio_usb(st_bno085 1)
 
-pico_add_extra_outputs(spin_test)
+pico_add_extra_outputs(st_bno085)
 
 # add url via pico_set_program_url
-example_auto_set_url(spin_test)
+example_auto_set_url(st_bno085)

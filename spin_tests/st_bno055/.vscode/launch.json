@@ -7,7 +7,7 @@
         {
             "name": "Cortex Debug",
             "cwd": "${workspaceRoot}",
-            "executable": "/home/rrace001/pico/pico-examples/build/spin_tests/st_bno085.elf",
+            "executable": "/home/rrace001/pico/pico-examples/build/spin_tests/st_bno055/st_bno055.elf",
             "request": "launch",
             "type": "cortex-debug",
             "servertype": "openocd",
