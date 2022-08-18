@@ -9,7 +9,7 @@ on getting up and running.
 
 App|Description | Link to prebuilt UF2
 ---|---|---
-[hello_serial](hello_world/serial) | The obligatory Hello World program for Pico (Output over serial version) | 
+[hello_serial](hello_world/serial) | The obligatory Hello World program for Pico (Output over serial version) |
 [hello_usb](hello_world/usb) | The obligatory Hello World program for Pico (Output over USB version) | https://rptl.io/pico-hello-usb
 [blink](blink) | Blink an LED on and off. | https://rptl.io/pico-blink
 
@@ -20,6 +20,7 @@ App|Description
 [hello_adc](adc/hello_adc)|Display the voltage from an ADC input.
 [joystick_display](adc/joystick_display)|Display a Joystick X/Y input based on two ADC inputs.
 [adc_console](adc/adc_console)|An interactive shell for playing with the ADC. Includes example of free-running capture mode.
+[onboard_temperature](adc/onboard_temperature)|Display the value of the onboard temperature sensor.
 [microphone_adc](adc/microphone_adc)|Read analog values from a microphone and plot the measured sound amplitude.
 
 ### Clocks
@@ -43,7 +44,6 @@ App|Description
 [hello_dma](dma/hello_dma)| Use the DMA to copy data in memory.
 [control_blocks](dma/control_blocks)| Build a control block list, to program a longer sequence of DMA transfers to the UART.
 [channel_irq](dma/channel_irq)| Use an IRQ handler to reconfigure a DMA channel, in order to continuously drive data through a PIO state machine.
-
 
 ### Flash
 
@@ -70,7 +70,6 @@ See also: [blink](blink), blinking an LED attached to a GPIO.
 App|Description
 ---|---
 [hello_divider](divider) | Show how to directly access the hardware integer dividers, in case AEABI injection is disabled.
-
 
 ### I2C
 
@@ -101,7 +100,7 @@ App|Description
 App|Description
 ---|---
 [hello_multicore](multicore/hello_multicore) | Launch a function on the second core, printf some messages on each core, and pass data back and forth through the mailbox FIFOs.
-[multicore_fifo_irqs](multicore/multicore_fifo_irqs) | On each core, register and interrupt handler for the mailbox FIFOs. Show how the interrupt fires when that core receives a message. 
+[multicore_fifo_irqs](multicore/multicore_fifo_irqs) | On each core, register and interrupt handler for the mailbox FIFOs. Show how the interrupt fires when that core receives a message.
 [multicore_runner](multicore/multicore_runner) | Set up the second core to accept, and run, any function pointer pushed into its mailbox FIFO. Push in a few pieces of code and get answers back.
 
 ### Pico Board
@@ -110,6 +109,32 @@ App|Description
 ---|---
 [blinky](picoboard/blinky)| Blink "hello, world" in Morse code on Pico's LED
 [button](picoboard/button)| Use Pico's BOOTSEL button as a regular button input, by temporarily suspending flash access.
+
+### Pico W Networking
+
+These eaxmples are for the Pico W, and are only available for `PICO_BOARD=pico_w`
+
+App|Description
+---|---
+[picow_access_point](pico_w/access_point)| Starts a WiFi access point, and fields DHCP requests.
+[picow_blink](pico_w/blink)| Blinks the on-board LED (which is connected via the WiFi chip).
+[picow_iperf_server](pico_w/iperf)| Runs an "iperf" server for WiFi speed testing.
+[picow_ntp_client](pico_w/ntp_client)| Connects to an NTP server to fetch and display the current time.
+[picow_tcp_client](pico_w/tcp_client)| A simple TCP client. You can run [python_test_tcp_server.py](pico_w/python_test_tcp/python_test_tcp_server.py) for it to connect to.
+[picow_tcp_server](pico_w/tcp_server)| A simple TCP server. You can use [python_test_tcp_client.py](pico_w/python_test_tcp/python_test_tcp_client.py) to connect to it.
+[picow_wifi_scan](pico_w/wifi_scan)| Scans for WiFi networks and prints the results.
+
+#### FreeRTOS examples
+
+These are examples of integrating Pico W networking under FreeRTOS, and require you to set the `FREERTOS_KERNEL_PATH`
+to point to the FreeRTOS Kernel.
+
+App|Description
+---|---
+[picow_freertos_iperf_server_nosys](pico_w/freertos/iperf)| Runs an "iperf" server for WiFi speed testing under FreeRTOS in NO_SYS=1 mode. The LED is blinked in another task
+[picow_freertos_iperf_server_sys](pico_w/freertos/iperf)| Runs an "iperf" server for WiFi speed testing under FreeRTOS in NO_SYS=0 (i.e. full FreeRTOS integration) mode. The LED is blinked in another task
+[picow_freertos_ping_nosys](pico_w/freertos/ping)| Runs the lwip-contrib/apps/ping test app under FreeRTOS in NO_SYS=1 mode.
+[picow_freertos_iperf_server_sys](pico_w/freertos/iperf)| Runs the lwip-contrib/apps/ping test app under FreeRTOS in NO_SYS=0 (i.e. full FreeRTOS integration) mode. The test app uses the lwIP \em socket API in this case. 
 
 ### PIO
 
@@ -164,6 +189,9 @@ App|Description
 [mpu9250_spi](spi/mpu9250_spi) | Attach a MPU9250 accelerometer/gyoscope via SPI.
 [spi_dma](spi/spi_dma) | Use DMA to transfer data both to and from the SPI simultaneously. The SPI is configured for loopback.
 [spi_flash](spi/spi_flash) | Erase, program and read a serial flash device attached to one of the SPI controllers.
+[spi_master_slave](spi/spi_master_slave) | Demonstrate SPI communication as master and slave.
+[max7219_8x7seg_spi](spi/max7219_8x7seg_spi) | Attaching a Max7219 driving an 8 digit 7 segment display via SPI
+[max7219_32x8_spi](spi/max7219_32x8_spi) | Attaching a Max7219 driving an 32x8 LED display via SPI
 
 ### Spin Tests
 
@@ -179,6 +207,7 @@ App|Description
 [hello_double_tap](system/hello_double_tap) | An LED blink with the `pico_bootsel_via_double_reset` library linked. This enters the USB bootloader when it detects the system being reset twice in quick succession, which is useful for boards with a reset button but no BOOTSEL button.
 [narrow_io_write](system/narrow_io_write) | Demonstrate the effects of 8-bit and 16-bit writes on a 32-bit IO register.
 [unique_board_id](system/unique_board_id) | Read the 64 bit unique ID from external flash, which serves as a unique identifier for the board.
+
 ### Timer
 
 App|Description
