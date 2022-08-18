@@ -1,6 +1,6 @@
 #include "findfun.h"
 
-void findfun::begin(float FUN_FREQ, 
+void findfun::begin(float CON_PITCH, 
                     float SAMP_FREQ,       
                     int LOW_MIDI_INDEX,
                     int HIGH_MIDI_INDEX,
@@ -11,8 +11,10 @@ void findfun::begin(float FUN_FREQ,
     high_midi_index = HIGH_MIDI_INDEX;
     num_corr_shifts = NUM_CORR_SHIFTS;
 
+    samp_freq_factor = 0xFFFFFFFF / SAMP_FREQ;
+
     for (auto mci = LOW_MIDI_INDEX*100-100; mci < HIGH_MIDI_INDEX*100+100; ++mci){
-        int p = ceil(SAMP_FREQ/(FUN_FREQ*(pow(2,((mci -6900.)/1200.)))));
+        int p = ceil(samp_freq_factor*SAMP_FREQ/(CON_PITCH*(pow(2,((mci -6900.)/1200.)))));
         int hp =  ceil(p/2);
         vector<int> e = {hp, p, p + hp};
         midi_cent_test_edges.push_back(e);
@@ -138,27 +140,33 @@ int findfun::find_midi_cent(const vector<int> &sample_edges){
     int trdi = 0;    // target relative deca index (10 cent relative target from 150 centbin)
     int trci = 0;    // target relative cent index (1 cent relative target from 15 cent bin)
 
+    vector<int> scaled_sample_edges;
+
+    for (auto se: sample_edges){
+        scaled_sample_edges.push_back(samp_freq_factor*se);
+    }
+
     if(sample_edges.size() > 3){
 
         vector<int> test_edges_mi_idxs;
         for (auto tp = 100; tp < (high_midi_index-low_midi_index)*100 + 100; tp += 100 ){
             test_edges_mi_idxs.push_back(tp);
         }
-        trmi = findfun::find_closest_period(sample_edges, test_edges_mi_idxs);
+        trmi = findfun::find_closest_period(scaled_sample_edges, test_edges_mi_idxs);
         tmci = trmi*100 + 100;
 
         vector<int> test_edges_mdi_idxs;
         for (auto tp = tmci - 100 ; tp < tmci + 100; tp += 10 ){
             test_edges_mdi_idxs.push_back(tp);
         }
-        trdi = findfun::find_closest_period(sample_edges, test_edges_mdi_idxs);
+        trdi = findfun::find_closest_period(scaled_sample_edges, test_edges_mdi_idxs);
         tmci += trdi*10 - 100;
 
         vector<int> test_edges_mci_idxs;
         for (auto tp = tmci - 10; tp < tmci + 10; tp++ ){
             test_edges_mci_idxs.push_back(tp);
         }
-        trci = findfun::find_closest_period(sample_edges, test_edges_mci_idxs);
+        trci = findfun::find_closest_period(scaled_sample_edges, test_edges_mci_idxs);
         tmci += trci - 10;
 
         tmci += low_midi_index*100 - 100;

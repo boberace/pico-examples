@@ -10,10 +10,11 @@ using std::vector;
 
 findfun ff = findfun();
 
-float FunFreq = 440.0; // fundamental frequency
+float ConPitch = 440.0; // concert pitch (middle A)
 // sampling frequency (hz)  for generating integer period lengths 
-float SF = 2.5 * 1000000;    
-float SP = 0.035; // sampling period (seconds)  (over 0.05 will cause memory panic in pico)
+float SF = 1000000; // same as the sample frequency of the edges sent    
+float SP = 0.035;   // sampling period (seconds) 
+                    // needs to be long enough to capture two periods of lowest frequency 
 int LMI = 38 ; // guitar 38 # piano 21
 int HMI = 66 + 1; // guitar 66 # piano 96
 int NCS = 20 ; // number of correlation shifts
@@ -25,10 +26,10 @@ vector<vector<int>> m_sample_edges;
 
 int main() {
     stdio_init_all();
-    ff.begin(FunFreq, SF, LMI, HMI, NCS);
+    ff.begin(ConPitch, SF, LMI, HMI, NCS);
 
     for(auto mi = LMI; mi < HMI; ++mi ){
-        float sample_freq = FunFreq*(pow(2,((mi*100. + sample_freq_cents_off -6900.)/1200.)));
+        float sample_freq = ConPitch*(pow(2,((mi*100. + sample_freq_cents_off -6900.)/1200.)));
         int sample_period = ceil(SF/sample_freq);
         int sample_half_period = ceil(sample_period/2);
         vector<int> sample_edges;
@@ -51,7 +52,7 @@ int main() {
             int t = absolute_time_diff_us(start,end);
             t = t/1000;
             int tmc = (LMI + idx)*100 + sample_freq_cents_off;
-            printf("target midi cent: %d found midi cent: %d, time %d\n", tmc, fmc,t);
+            printf("[target midi cent %d ] [ %d found midi cent] time %d\n", tmc, fmc,t);
 
             idx++;
         }
