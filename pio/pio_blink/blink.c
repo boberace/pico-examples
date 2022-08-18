@@ -21,7 +21,7 @@ int main() {
     uint offset = pio_add_program(pio, &blink_program);
     
 
-    blink_pin_forever(pio, 0, offset, 25, 3);
+    blink_pin_forever(pio, 0, offset, 25, 10);
     // blink_pin_forever(pio, 1, offset, 6, 4);
     // blink_pin_forever(pio, 2, offset, 11, 1);
     while (1)
