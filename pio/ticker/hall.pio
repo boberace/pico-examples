@@ -1,0 +1,32 @@
+
+.program hall
+
+.wrap_target
+
+    wait 0 pin 0
+    irq wait 0 rel
+    wait 1 pin 0
+    irq wait 1 rel
+
+.wrap             
+
+
+% c-sdk {
+// this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
+
+void hall_program_init(PIO pio, uint sm, uint offset, uint pin_hall) {
+
+    pio_gpio_init(pio, pin_hall);
+    pio_sm_set_consecutive_pindirs(pio, sm, pin_hall, 1, false);
+    ;gpio_pull_up(pin_hall);
+
+    pio_sm_config c = hall_program_get_default_config(offset);
+    sm_config_set_in_pins(&c, pin_hall);
+
+    pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
+    pio_set_irq1_source_enabled(pio, pis_interrupt1, true);
+
+    pio_sm_init(pio, sm, offset, &c);
+    
+}
+%}
