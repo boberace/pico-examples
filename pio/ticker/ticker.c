@@ -20,6 +20,9 @@ todo:  create alternate to connect two statementions to respond to each other
 const int PIN_LED = 25;
 const int PIN_HALL = 27;
 
+int lowc = 0;
+int highc = 0;
+
 const int SM_HALL = 0;
 PIO PIO_HALL = pio0;
 
@@ -28,11 +31,27 @@ PIO PIO_BLINK = pio1;
 
 void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, uint freq);
 void hall_detect(PIO pio, uint sm, uint offset, uint pin_hall);
-void hall_isr0();
-void hall_isr1();
+
+void hall_isr0()
+{   
+    lowc++;
+    pio_interrupt_clear(PIO_HALL, 0 + SM_HALL);
+}
+
+void hall_isr1()
+{   
+    highc++;
+    pio_interrupt_clear(PIO_HALL, 1 + SM_HALL);
+}
 
 int main() {
     stdio_init_all(); 
+
+    irq_set_exclusive_handler(PIO0_IRQ_0, hall_isr0);
+    irq_set_enabled(PIO0_IRQ_0, true);
+
+    irq_set_exclusive_handler(PIO0_IRQ_1, hall_isr1);
+    irq_set_enabled(PIO0_IRQ_1, true);
 
     uint offset_blink = pio_add_program(PIO_BLINK, &blink_program);  
     blink_pin_forever(PIO_BLINK, SM_BLINK, offset_blink, PIN_LED, 1); 
@@ -42,9 +61,9 @@ int main() {
 
     while(1){
         printf("tick\n");
+        printf("lowc: %d, highc %d\n", lowc, highc);
         sleep_ms(1000);
-        printf("tock\n");
-        sleep_ms(1000);
+
     }
 }
 
@@ -64,14 +83,4 @@ void hall_detect(PIO pio, uint sm, uint offset, uint pin_hall) {
     pio_sm_set_enabled(pio, sm, true);
 }
 
-void hall_isr0()
-{   
-    printf("low");
-    pio_interrupt_clear(PIO_HALL, 0);
-}
 
-void hall_isr1()
-{   
-    printf("high");
-    pio_interrupt_clear(PIO_HALL, 1);
-}

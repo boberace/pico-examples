@@ -4,9 +4,9 @@
 .wrap_target
 
     wait 0 pin 0
-    irq 0
+    irq wait 0 rel
     wait 1 pin 0
-    irq 1
+    irq wait 1 rel
 
 .wrap             
 
@@ -23,8 +23,9 @@ void hall_program_init(PIO pio, uint sm, uint offset, uint pin_hall) {
     pio_sm_config c = hall_program_get_default_config(offset);
     sm_config_set_in_pins(&c, pin_hall);
 
-    pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
-    pio_set_irq1_source_enabled(pio, pis_interrupt1, true);
+    pio_set_irq0_source_enabled(pio, pis_interrupt0 + sm, true);
+    pio_set_irq1_source_enabled(pio, pis_interrupt1 + sm, true);
+
 
     pio_sm_init(pio, sm, offset, &c);
     
