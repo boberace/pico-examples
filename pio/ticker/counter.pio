@@ -1,0 +1,23 @@
+
+.program counter
+    pull block
+    out y, 32
+.wrap_target
+    mov x, y
+loop:
+    jmp x-- loop 
+.wrap             
+
+       
+
+
+% c-sdk {
+// this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
+
+void counter_program_init(PIO pio, uint sm, uint offset) {
+
+    pio_sm_config c = counter_program_get_default_config(offset);
+    pio_sm_init(pio, sm, offset, &c);
+    
+}
+%}

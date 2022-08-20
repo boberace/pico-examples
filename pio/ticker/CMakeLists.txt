@@ -2,6 +2,7 @@ add_executable(pio_ticker)
 
 pico_generate_pio_header(pio_ticker ${CMAKE_CURRENT_LIST_DIR}/blink.pio)
 pico_generate_pio_header(pio_ticker ${CMAKE_CURRENT_LIST_DIR}/hall.pio)
+pico_generate_pio_header(pio_ticker ${CMAKE_CURRENT_LIST_DIR}/counter.pio)
 
 target_sources(pio_ticker PRIVATE 
                 ticker.c)
