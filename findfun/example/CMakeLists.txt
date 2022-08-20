@@ -1,6 +1,6 @@
 add_executable(example_ff
         example_ff.cpp
-        findfun.cpp
+        ../findfun.cpp
         )
 
 # pull in common dependencies

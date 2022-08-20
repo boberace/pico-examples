@@ -26,9 +26,10 @@ const int PIN_TRIG = 26;
 const int PIN_HALL = 27;
 
 #define NUM_LOOP_SAMPLES 5
-int loop_current_idx = 0;
+int loop_idx = 0;
 uint64_t stamp_us[2][NUM_LOOP_SAMPLES];
 int ff = 0;
+int ff_flag = 0;
 
 // uint64_t this_time = 0;
 // uint64_t last_time = 0;
@@ -56,17 +57,19 @@ void gpio_event_string(char *buf, uint32_t events);
 void gpio_callback(uint gpio, uint32_t events) {
     // Put the GPIO event(s) that just happened into event_str
     // so we can print it
-    stamp_us[ff][loop_current_idx] = to_us_since_boot(get_absolute_time());
+    stamp_us[ff][loop_idx] = to_us_since_boot(get_absolute_time());
     pin_toggle(PIN_LED);
     
     gpio_event_string(event_str, events);
-    printf("GPIO %d %s idx:%d time: %d\n", gpio, event_str,  loop_current_idx, stamp_us[ff][loop_current_idx] );
+    printf("GPIO %d %s group: %d idx:%d time: %d \n", gpio, event_str, ff,  loop_idx, stamp_us[ff][loop_idx] );
 
-    loop_current_idx++;
-    loop_current_idx%=NUM_LOOP_SAMPLES;
+    loop_idx++;
+    loop_idx%=NUM_LOOP_SAMPLES;
 
-    if(loop_current_idx == 0){
-        ff = loop_current_idx?0:1;
+    if(loop_idx == 0){
+        if(ff)ff=0;
+        else ff = 1;
+        ff_flag = 1;
     }
 
 }
@@ -113,9 +116,12 @@ int main() {
     gpio_set_irq_enabled_with_callback(PIN_HALL, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
 
     while(1){
-        // printf("tick\n");
-        // printf("lowc: %d, highc %d\n", lowc, highc);
-        // sleep_ms(1000);
+        if(ff_flag){
+            ff_flag = 0;
+            
+
+
+        }
 
     }
 }
