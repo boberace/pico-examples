@@ -1,2 +1,2 @@
 add_subdirectory(example)
-add_subdirectory(instratune)
+add_subdirectory(instrutune)
