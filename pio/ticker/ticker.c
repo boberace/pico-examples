@@ -24,6 +24,9 @@ const int PIN_LED = 25;
 const int PIN_TRIG = 26;
 const int PIN_HALL = 27;
 
+int this_time = 0;
+int last_time = 0;
+
 // int lowc = 0;
 // int highc = 0;
 
@@ -47,9 +50,12 @@ void gpio_event_string(char *buf, uint32_t events);
 void gpio_callback(uint gpio, uint32_t events) {
     // Put the GPIO event(s) that just happened into event_str
     // so we can print it
+    absolute_time_t t = get_absolute_time ();
+    this_time = to_us_since_boot(t);
     pin_toggle(PIN_LED);
     gpio_event_string(event_str, events);
-    printf("GPIO %d %s\n", gpio, event_str);
+    printf("GPIO %d %s mics:%d\n", gpio, event_str, this_time - last_time );
+    last_time = this_time;
 }
 
 // void hall_isr0()
@@ -71,6 +77,9 @@ int main() {
 
     gpio_init(PIN_LED);
     gpio_set_dir(PIN_LED, GPIO_OUT);
+
+    gpio_init(PIN_HALL);
+    gpio_set_dir(PIN_HALL, GPIO_IN);
 
     // irq_set_exclusive_handler(PIO0_IRQ_0, hall_isr0);
     // irq_set_enabled(PIO0_IRQ_0, true);
