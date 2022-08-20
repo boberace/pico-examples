@@ -7,6 +7,11 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
+#include "hardware/irq.h"
+
+#define pin_toggle(x) gpio_put(x, !gpio_get(x))
+
+#define PIN_LED 25
 
 static char event_str[128];
 
@@ -15,18 +20,27 @@ void gpio_event_string(char *buf, uint32_t events);
 void gpio_callback(uint gpio, uint32_t events) {
     // Put the GPIO event(s) that just happened into event_str
     // so we can print it
+    pin_toggle(PIN_LED);
     gpio_event_string(event_str, events);
     printf("GPIO %d %s\n", gpio, event_str);
 }
 
 int main() {
     stdio_init_all();
+    gpio_init(PIN_LED);
+    gpio_set_dir(PIN_LED, GPIO_OUT);
+
+    gpio_init(27);
+    gpio_set_dir(27, GPIO_IN);
 
     printf("Hello GPIO IRQ\n");
-    gpio_set_irq_enabled_with_callback(2, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
+    gpio_set_irq_enabled_with_callback(27, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
 
     // Wait forever
-    while (1);
+    while (1){
+        printf("Hello GPIO IRQ\n");
+        sleep_ms(1000);
+    }
 
     return 0;
 }

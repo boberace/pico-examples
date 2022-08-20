@@ -6,9 +6,6 @@
     wait 1 pin 0
     irq 1 rel  
 
-       
-
-
 % c-sdk {
 // this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
 
