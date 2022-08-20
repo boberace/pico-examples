@@ -17,6 +17,7 @@ todo:  create alternate to connect two statementions to respond to each other
 // #include "counter.pio.h"
 
 #define pin_toggle(x) gpio_put(x, !gpio_get(x))
+
 // three pins in a row are used starting with PIN_LED 
 // second pin blinks with LED which is connected to 
 // thrid pin that is used to detect the LED blink
@@ -24,8 +25,13 @@ const int PIN_LED = 25;
 const int PIN_TRIG = 26;
 const int PIN_HALL = 27;
 
-int this_time = 0;
-int last_time = 0;
+#define NUM_LOOP_SAMPLES 5
+int loop_current_idx = 0;
+uint64_t stamp_us[2][NUM_LOOP_SAMPLES];
+int ff = 0;
+
+// uint64_t this_time = 0;
+// uint64_t last_time = 0;
 
 // int lowc = 0;
 // int highc = 0;
@@ -50,12 +56,19 @@ void gpio_event_string(char *buf, uint32_t events);
 void gpio_callback(uint gpio, uint32_t events) {
     // Put the GPIO event(s) that just happened into event_str
     // so we can print it
-    absolute_time_t t = get_absolute_time ();
-    this_time = to_us_since_boot(t);
+    stamp_us[ff][loop_current_idx] = to_us_since_boot(get_absolute_time());
     pin_toggle(PIN_LED);
+    
     gpio_event_string(event_str, events);
-    printf("GPIO %d %s mics:%d\n", gpio, event_str, this_time - last_time );
-    last_time = this_time;
+    printf("GPIO %d %s idx:%d time: %d\n", gpio, event_str,  loop_current_idx, stamp_us[ff][loop_current_idx] );
+
+    loop_current_idx++;
+    loop_current_idx%=NUM_LOOP_SAMPLES;
+
+    if(loop_current_idx == 0){
+        ff = loop_current_idx?0:1;
+    }
+
 }
 
 // void hall_isr0()
