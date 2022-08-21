@@ -11,3 +11,6 @@ pico_add_extra_outputs(multicore_runner)
 
 # add url via pico_set_program_url
 example_auto_set_url(multicore_runner)
+
+pico_enable_stdio_usb(instrutune 1)
+pico_enable_stdio_uart(instrutune 0)

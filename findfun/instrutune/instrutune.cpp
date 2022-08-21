@@ -18,8 +18,6 @@ const int PIN_LED = 25;
 const int PIN_TRIG = 26;
 const int PIN_HALL = 27;
 
-// findfun ff = findfun();
-
 float ConPitch = 440.0; // concert pitch (middle A)
 // sampling frequency (hz)  for generating integer period lengths 
 float SF = 1000000; // same as the sample frequency of the edges sent    
@@ -37,6 +35,71 @@ uint64_t stamp_ticks[NUM_LOOP_SAMPLES];
 
 void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, float freq);
 void gpio_event_string(char *buf, uint32_t events);
+
+int inf_midi_cent = 0;
+
+
+void core1_entry() {  
+    findfun ff = findfun();
+    ff.begin(   ConPitch,
+                SF,
+                LMI,
+                HMI,
+                NCS);
+
+    uint32_t prev_millis = to_ms_since_boot(get_absolute_time());
+    uint32_t curr_millis = to_ms_since_boot(get_absolute_time());
+
+    while(1){
+
+        sleep_ms(1);
+
+        curr_millis = to_ms_since_boot(get_absolute_time());
+        if( curr_millis - prev_millis > SP*1000){
+            prev_millis = curr_millis;
+
+            // printf("\n\n\n %f\n", idx);            
+
+            int top_idx = loop_idx -1;     
+            int idx = top_idx;       
+
+            uint64_t start_ticks = stamp_ticks[idx] - SP*SF;
+
+            while(stamp_ticks[idx] > start_ticks){  
+
+                if(--idx < 0){
+                    idx = NUM_LOOP_SAMPLES;
+                }
+
+            }
+
+            if(--idx < 0){
+                idx = NUM_LOOP_SAMPLES;
+            }
+
+            uint64_t base_ticks = stamp_ticks[idx];
+
+            int bot_idx = ++idx;
+
+            vector<int> sample_edges;
+
+            for(auto i = bot_idx; i < top_idx; ++i){
+                sample_edges.push_back(stamp_ticks[i] - base_ticks);
+            }            
+
+            // for(auto se: sample_edges){
+            //     printf("%d\n", se);
+            // }
+
+        inf_midi_cent = ff.find_midi_cent(sample_edges);
+
+        printf("midi cent %d\n", inf_midi_cent);
+
+        }
+    }
+
+}
+
 
 void gpio_callback(uint gpio, uint32_t events) {
 
@@ -70,53 +133,11 @@ int main() {
     printf("Hello GPIO IRQ\n");
     gpio_set_irq_enabled_with_callback(PIN_HALL, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
 
-    uint32_t prev_millis = to_ms_since_boot(get_absolute_time());
-    uint32_t curr_millis = to_ms_since_boot(get_absolute_time());
+    multicore_launch_core1(core1_entry);
 
     while(1){
 
-        sleep_ms(1);
-
-        curr_millis = to_ms_since_boot(get_absolute_time());
-        if( curr_millis - prev_millis > SP*1000){
-            prev_millis = curr_millis;
-
-            // printf("\n\n\n %f\n", idx);
-
-            vector<int> sample_edges;
-
-            int top_idx = loop_idx -1;     
-            int idx = top_idx;       
-
-            uint64_t start_ticks = stamp_ticks[idx] - SP*SF;
-
-            while(stamp_ticks[idx] > start_ticks){  
-
-                if(--idx < 0){
-                    idx = NUM_LOOP_SAMPLES;
-                }
- 
-            }
-
-            if(--idx < 0){
-                idx = NUM_LOOP_SAMPLES;
-            }
-
-            uint64_t base_ticks = stamp_ticks[idx];
-
-            int bot_idx = ++idx;
-
-            for(auto i = bot_idx; i < top_idx; ++i){
-                sample_edges.push_back(stamp_ticks[i] - base_ticks);
-            }
-
-            // for(auto se: sample_edges){
-            //     printf("%d\n", se);
-            // }
-
-
-
-        }
+        sleep_ms(1); 
         
     }
 
