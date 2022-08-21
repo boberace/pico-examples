@@ -1,6 +1,6 @@
 
 #include "pico/stdlib.h"
-#include "findfun.h"
+#include "../findfun.h"
 #include <stdio.h>
 #include <math.h>
 #include <vector>

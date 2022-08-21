@@ -46,7 +46,7 @@ int ff_flag = 0;
 const int SM_BLINK = 0;
 PIO PIO_BLINK = pio1;
 
-void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, uint freq);
+void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, float freq);
 // void hall_detect(PIO pio, uint sm, uint offset, uint pin);
 // void count_fast(PIO pio, uint sm, uint offset);
 
@@ -104,7 +104,7 @@ int main() {
     // irq_set_enabled(PIO0_IRQ_1, true);
 
     uint offset_blink = pio_add_program(PIO_BLINK, &blink_program);  
-    blink_pin_forever(PIO_BLINK, SM_BLINK, offset_blink, PIN_TRIG, 1); 
+    blink_pin_forever(PIO_BLINK, SM_BLINK, offset_blink, PIN_TRIG, 0.5); 
 
     // uint offset_hall = pio_add_program(PIO_HALL, &hall_program);    
     // hall_detect(PIO_HALL, SM_HALL, offset_hall, PIN_HALL);
@@ -126,11 +126,11 @@ int main() {
     }
 }
 
-void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, uint freq) {
+void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, float freq) {
     blink_program_init(pio, sm, offset, pin);
     pio_sm_set_enabled(pio, sm, true);
 
-    printf("Blinking pin %d at %d Hz\n", pin, freq);
+    printf("Blinking pin %d at %f Hz\n", pin, freq);
 
     // PIO counter program takes 3 more cycles in total than we pass as
     // input (wait for n + 1; mov; jmp)
