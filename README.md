@@ -49,8 +49,8 @@ App|Description
 
 App|Description
 ---|---
-[examle](findfun/example)| generates test samples to run in findfun library.
-[instratune](findfun/instrutune)| instrament tuner usning findfun library.
+[example](findfun/example)| generates test samples to run in findfun library.
+[instrutune](findfun/instrutune)| instrament tuner usning findfun library.
 
 ### Flash
 
