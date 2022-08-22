@@ -9,14 +9,34 @@
 #include "blink.pio.h"
 #include "hardware/dma.h"
 #include "pico/multicore.h"
+#include "ssd1306.h"
+#include <string.h>
+
+// #define feather
+
+#define I2C0_BUADRATE 400*1000
+#define PIN_LED 25
+#define PIN_TRIG 26
+
+#define BUTTON_A  9
+#define BUTTON_B  8
+#define BUTTON_C  7
+
+#ifdef feather
+#define PIN_HALL 13   // pico 27 feather 13
+#define PIN_I2C_SDA 2 // pico 16 feather 2
+#define PIN_I2C_SCL 3 // pico 17 feather 3
+#else
+#define PIN_HALL 27   // pico 27 feather 13
+#define PIN_I2C_SDA 16 // pico 16 feather 2
+#define PIN_I2C_SCL 17 // pico 17 feather 3
+#endif
 
 #define pin_toggle(x) gpio_put(x, !gpio_get(x))
 
 using std::vector;
 
-const int PIN_LED = 25;
-const int PIN_TRIG = 26;
-const int PIN_HALL = 27;
+ssd1306_t disp; // create oled display instance
 
 float ConPitch = 440.0; // concert pitch (middle A)
 // sampling frequency (hz)  for generating integer period lengths 
@@ -27,16 +47,27 @@ int LMI = 38 ; // guitar 38 # piano 21
 int HMI = 66 + 1; // guitar 66 # piano 96
 int NCS = 20 ; // number of correlation shifts
 
+int midi_idx = 0;
+int midi_cent = 0;
+int note_idx = 0;
+int note_oct = 0;
+
+char* note[12] = { "C ", "C#", "D ", "D# ", "E ", "F ", "F#", "G ", "G#", "A ", "Bb", "B "};
+
 static char event_str[128];
 
 #define NUM_LOOP_SAMPLES 500
 int loop_idx = 0;
 uint64_t stamp_ticks[NUM_LOOP_SAMPLES];
 
+void setup_i2c0(void); 
+void setup_i2c1(void);
+void setup_oled(void);
 void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, float freq);
 void gpio_event_string(char *buf, uint32_t events);
+void update_display(void);
 
-int inf_midi_cent = 0;
+int inf_midi_cent_idx = 0;
 
 
 void core1_entry() {  
@@ -50,7 +81,7 @@ void core1_entry() {
     uint32_t prev_millis = to_ms_since_boot(get_absolute_time());
     uint32_t curr_millis = to_ms_since_boot(get_absolute_time());
 
-    while(1){
+    while(1){  //core 1 loop ***  core 1 loop ***core 1 loop ***  core 1 loop ***  
 
         sleep_ms(1);
 
@@ -91,9 +122,7 @@ void core1_entry() {
             //     printf("%d\n", se);
             // }
 
-        inf_midi_cent = ff.find_midi_cent(sample_edges);
-
-        printf("midi cent %d\n", inf_midi_cent);
+        inf_midi_cent_idx = ff.find_midi_cent(sample_edges);
 
         }
     }
@@ -120,6 +149,15 @@ void gpio_callback(uint gpio, uint32_t events) {
 int main() {
     stdio_init_all();
 
+#ifdef feather
+    setup_i2c1(); //pico 0 feather 1
+#else
+    setup_i2c0(); //pico 0 feather 1
+#endif
+
+
+    setup_oled();
+
     gpio_init(PIN_LED);
     gpio_set_dir(PIN_LED, GPIO_OUT);
 
@@ -135,9 +173,29 @@ int main() {
 
     multicore_launch_core1(core1_entry);
 
-    while(1){
+    uint32_t prev_millis = to_ms_since_boot(get_absolute_time());
+    uint32_t curr_millis = to_ms_since_boot(get_absolute_time());
 
-        sleep_ms(1); 
+    while(1){  // core 0 loop ***  core 0 loop ***  core 0 loop ***  core 0 loop ***  core 0 loop *** 
+
+        sleep_ms(1);
+        // display
+        curr_millis = to_ms_since_boot(get_absolute_time());
+        if( curr_millis - prev_millis > 100){
+            prev_millis = curr_millis;
+            update_display(); 
+
+            // printf("midi cent %d\n", inf_midi_cent_idx);
+
+            int inf_midi_cent_idx_cpy = inf_midi_cent_idx;
+            if(inf_midi_cent_idx_cpy > 0){
+                midi_idx = round(inf_midi_cent_idx_cpy/100);
+                midi_cent = inf_midi_cent_idx_cpy - midi_idx*100;
+                note_idx = midi_idx % 12;
+                note_oct = (midi_idx - note_idx)/12 - 1;
+            }
+
+        }
         
     }
 
@@ -182,4 +240,59 @@ void gpio_event_string(char *buf, uint32_t events) {
         }
     }
     *buf++ = '\0';
+}
+
+void setup_i2c0(void){
+
+    i2c_init(i2c0, I2C0_BUADRATE);
+    gpio_set_function(PIN_I2C_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(PIN_I2C_SCL, GPIO_FUNC_I2C);
+    gpio_pull_up(PIN_I2C_SDA);
+    gpio_pull_up(PIN_I2C_SCL);
+}
+
+void setup_i2c1(void){
+
+    i2c_init(i2c1, I2C0_BUADRATE);
+    gpio_set_function(PIN_I2C_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(PIN_I2C_SCL, GPIO_FUNC_I2C);
+    // gpio_pull_up(PIN_I2C_SDA);
+    // gpio_pull_up(PIN_I2C_SCL);
+}
+
+
+void setup_oled(void) {
+
+    disp.external_vcc=false;
+#ifdef feather
+    ssd1306_init(&disp, 128, 32, 0x3C, i2c1);
+#else
+    ssd1306_init(&disp, 128, 32, 0x3C, i2c0);
+#endif
+    ssd1306_clear(&disp);
+    ssd1306_draw_string(&disp, 8, 0, 1, (char*)"SSD1306");
+    ssd1306_draw_string(&disp, 8, 16, 2, (char*)"DISPLAY");
+    ssd1306_show(&disp);
+}
+
+void update_display(void){ //inf_midi_cent_idx
+    
+    ssd1306_clear(&disp);
+
+    char str[128];
+
+    ssd1306_draw_string(&disp, 0, 0, 3, note[note_idx]);
+
+    memset(str, 0, sizeof(char));
+    sprintf(str, "%d:%d", note_oct, midi_cent);
+    ssd1306_draw_string(&disp, 24, 0, 3, str);
+
+    // memset(str, 0, sizeof(char));
+    // sprintf(str, "%d, %d", midi_idx, midi_cent);
+    // ssd1306_draw_string(&disp, 0, 16, 2, str);
+
+    ssd1306_show(&disp);
+
+    pin_toggle(PIN_LED); 
+
 }

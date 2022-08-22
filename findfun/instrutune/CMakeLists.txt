@@ -1,6 +1,7 @@
 add_executable(instrutune
         instrutune.cpp
         ../findfun.cpp
+        ssd1306.c
         )
 
 pico_generate_pio_header(instrutune ${CMAKE_CURRENT_LIST_DIR}/blink.pio)
@@ -11,6 +12,7 @@ target_link_libraries(instrutune
                         hardware_pio
                         hardware_dma
                         pico_multicore
+                        hardware_i2c
 			)
 
 # create map/bin/hex file etc.
