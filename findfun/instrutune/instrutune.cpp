@@ -11,8 +11,11 @@
 #include "pico/multicore.h"
 #include "ssd1306.h"
 #include <string.h>
+#include "cindex.h"
 
-// #define feather
+// #define feather // if defined; changes values for feather vice pico 
+#define display    // if defined; turns on OLED
+#define range_test // if defined; creates pure test signals that run through the midi range
 
 #define I2C0_BUADRATE 400*1000
 #define PIN_LED 25
@@ -21,6 +24,10 @@
 #define BUTTON_A  9
 #define BUTTON_B  8
 #define BUTTON_C  7
+
+// pio blink program starts at origin 0 in code
+#define SM_BLINK 0     // blink program state machine
+PIO PIO_BLINK = pio0;  // blink program pio
 
 #ifdef feather
 #define PIN_HALL 13   // pico 27 feather 13
@@ -57,18 +64,19 @@ char* note[12] = { "C ", "C#", "D ", "D# ", "E ", "F ", "F#", "G ", "G#", "A ", 
 static char event_str[128];
 
 #define NUM_LOOP_SAMPLES 500
-int loop_idx = 0;
-uint64_t stamp_ticks[NUM_LOOP_SAMPLES];
+cindex loop_idx(NUM_LOOP_SAMPLES);
+uint64_t stamp_edges_ticks[NUM_LOOP_SAMPLES];
 
 void setup_i2c0(void); 
 void setup_i2c1(void);
+#ifdef display
 void setup_oled(void);
+#endif
 void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, float freq);
 void gpio_event_string(char *buf, uint32_t events);
 void update_display(void);
 
 int inf_midi_cent_idx = 0;
-
 
 void core1_entry() {  
     findfun ff = findfun();
@@ -86,42 +94,29 @@ void core1_entry() {
         sleep_ms(1);
 
         curr_millis = to_ms_since_boot(get_absolute_time());
-        if( curr_millis - prev_millis > SP*1000){
+        if( curr_millis - prev_millis > SP*1000){ // grab new sample from buffer every sample period
             prev_millis = curr_millis;
+     
+            // grab a slice of the buffer one sample period back
 
-            // printf("\n\n\n %f\n", idx);            
+            int top_idx = loop_idx -1; // start with second to most recent for top index
+            // int idx = top_idx; //  initialize search index     
 
-            int top_idx = loop_idx -1;     
-            int idx = top_idx;       
+            cindex idx(NUM_LOOP_SAMPLES);
+            idx = top_idx;
 
-            uint64_t start_ticks = stamp_ticks[idx] - SP*SF;
+            uint64_t start_edge_ticks = stamp_edges_ticks[idx] - SP*SF; 
 
-            while(stamp_ticks[idx] > start_ticks){  
+            while(stamp_edges_ticks[--idx] > start_edge_ticks);
 
-                if(--idx < 0){
-                    idx = NUM_LOOP_SAMPLES;
-                }
-
-            }
-
-            if(--idx < 0){
-                idx = NUM_LOOP_SAMPLES;
-            }
-
-            uint64_t base_ticks = stamp_ticks[idx];
-
-            int bot_idx = ++idx;
+            uint64_t base_ticks = stamp_edges_ticks[idx]; // used to subtract from sample edges
 
             vector<int> sample_edges;
 
-            for(auto i = bot_idx; i < top_idx; ++i){
-                sample_edges.push_back(stamp_ticks[i] - base_ticks);
-            }            
+            while(++idx != top_idx) sample_edges.push_back(stamp_edges_ticks[idx] - base_ticks);
 
-            // for(auto se: sample_edges){
-            //     printf("%d\n", se);
-            // }
-
+        // send slice for detection;
+        
         inf_midi_cent_idx = ff.find_midi_cent(sample_edges);
 
         }
@@ -135,14 +130,14 @@ void gpio_callback(uint gpio, uint32_t events) {
     absolute_time_t t = get_absolute_time();
     uint64_t t_us = to_us_since_boot(t);
 
-    stamp_ticks[loop_idx] = t_us;
+    stamp_edges_ticks[loop_idx] = t_us;
     pin_toggle(PIN_LED);
     
     // gpio_event_string(event_str, events);
-    // printf("GPIO %d %s idx: %d time: %d \n", gpio, event_str, loop_idx, stamp_ticks[loop_idx] );
+    // printf("GPIO %d %s idx: %d time: %d \n", gpio, event_str, loop_idx, stamp_edges_ticks[loop_idx] );
 
     loop_idx++;
-    loop_idx %= NUM_LOOP_SAMPLES;   
+    // loop_idx %= NUM_LOOP_SAMPLES;   
 
 }
 
@@ -155,8 +150,9 @@ int main() {
     setup_i2c0(); //pico 0 feather 1
 #endif
 
-
+#ifdef display
     setup_oled();
+#endif
 
     gpio_init(PIN_LED);
     gpio_set_dir(PIN_LED, GPIO_OUT);
@@ -164,28 +160,30 @@ int main() {
     gpio_init(PIN_HALL);
     gpio_set_dir(PIN_HALL, GPIO_IN);
 
-    PIO pio = pio0;
-    uint offset = pio_add_program(pio, &blink_program); 
-    blink_pin_forever(pio, 0, offset, PIN_TRIG, 110);
-
     printf("Hello GPIO IRQ\n");
     gpio_set_irq_enabled_with_callback(PIN_HALL, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
 
+    uint blink_offset = pio_add_program(PIO_BLINK, &blink_program); 
+
     multicore_launch_core1(core1_entry);
 
-    uint32_t prev_millis = to_ms_since_boot(get_absolute_time());
-    uint32_t curr_millis = to_ms_since_boot(get_absolute_time());
+    uint32_t prev_millis_display = to_ms_since_boot(get_absolute_time());
+    uint32_t curr_millis_display = to_ms_since_boot(get_absolute_time());
+
+    int frame_counter = 0;
+    int idx_counter = HMI-LMI;
 
     while(1){  // core 0 loop ***  core 0 loop ***  core 0 loop ***  core 0 loop ***  core 0 loop *** 
 
         sleep_ms(1);
         // display
-        curr_millis = to_ms_since_boot(get_absolute_time());
-        if( curr_millis - prev_millis > 100){
-            prev_millis = curr_millis;
+        curr_millis_display = to_ms_since_boot(get_absolute_time());
+        if( curr_millis_display - prev_millis_display > 100){
+            prev_millis_display = curr_millis_display;
+#ifdef display
             update_display(); 
-
-            // printf("midi cent %d\n", inf_midi_cent_idx);
+#endif
+            printf("midi cent %d\n", inf_midi_cent_idx);
 
             int inf_midi_cent_idx_cpy = inf_midi_cent_idx;
             if(inf_midi_cent_idx_cpy > 0){
@@ -195,6 +193,21 @@ int main() {
                 note_oct = (midi_idx - note_idx)/12 - 1;
             }
 
+#ifdef range_test
+            if(frame_counter % 10 == 0){
+
+                int midi_idx = idx_counter+LMI;
+                float sample_freq = ConPitch*(pow(2,((midi_idx*100. + 0 -6900.)/1200.)));
+
+                blink_pin_forever(PIO_BLINK, SM_BLINK, blink_offset, PIN_TRIG, sample_freq);
+
+                idx_counter++;
+                idx_counter%=(HMI - LMI);
+            }
+#endif
+
+
+            frame_counter++;
         }
         
     }
@@ -206,7 +219,7 @@ void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, float freq) {
     blink_program_init(pio, sm, offset, pin);
     pio_sm_set_enabled(pio, sm, true);
 
-    printf("Blinking pin %d at %d Hz\n", pin, freq);
+    printf("Blinking pin %d at %.2f Hz\n", pin, freq);
 
     // PIO counter program takes 3 more cycles in total than we pass as
     // input (wait for n + 1; mov; jmp)
@@ -284,7 +297,7 @@ void update_display(void){ //inf_midi_cent_idx
     ssd1306_draw_string(&disp, 0, 0, 3, note[note_idx]);
 
     memset(str, 0, sizeof(char));
-    sprintf(str, "%d:%d", note_oct, midi_cent);
+    sprintf(str, " %d:%d", note_oct, midi_cent);
     ssd1306_draw_string(&disp, 24, 0, 3, str);
 
     // memset(str, 0, sizeof(char));

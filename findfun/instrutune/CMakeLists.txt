@@ -2,6 +2,7 @@ add_executable(instrutune
         instrutune.cpp
         ../findfun.cpp
         ssd1306.c
+        cindex.cpp
         )
 
 pico_generate_pio_header(instrutune ${CMAKE_CURRENT_LIST_DIR}/blink.pio)
