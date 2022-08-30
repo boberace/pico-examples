@@ -1,3 +1,17 @@
+/*
+this class takes in a vector of zero crossings from
+a sound sample and attemps to infer the fundamental frequency
+to a resolution of 1 cent from its closest musical pitch.
+it returns an integer value that corresponds to the 
+midi numbering system times 100.  
+
+examples : 
+return of 4487
+round(4487/100) = 45 (note A second octave on midi : A2)
+4487 - 45*100 = -13  (13 cent lower than A2)
+*/
+
+
 #include "findfun.h"
 
 void findfun::begin(float CON_PITCH, 

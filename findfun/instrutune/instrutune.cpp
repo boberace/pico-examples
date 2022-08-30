@@ -95,25 +95,22 @@ void core1_entry() {
 
         curr_millis = to_ms_since_boot(get_absolute_time());
         if( curr_millis - prev_millis > SP*1000){ // grab new sample from buffer every sample period
-            prev_millis = curr_millis;
-     
-            // grab a slice of the buffer one sample period back
+            prev_millis = curr_millis;    
 
-            int top_idx = loop_idx -1; // start with second to most recent for top index
-            // int idx = top_idx; //  initialize search index     
+            int sample_end_idx = loop_idx -1; // mark end of sample
 
-            cindex idx(NUM_LOOP_SAMPLES);
-            idx = top_idx;
+            cindex idx(NUM_LOOP_SAMPLES); // create circular index with top same as number of elements in circular buffer
+            idx = sample_end_idx; // start cindex at end of sample
 
-            uint64_t start_edge_ticks = stamp_edges_ticks[idx] - SP*SF; 
+            uint64_t start_edge_ticks = stamp_edges_ticks[idx] - SP*SF;  // calculate how far back to grab samples
 
-            while(stamp_edges_ticks[--idx] > start_edge_ticks);
+            while(stamp_edges_ticks[--idx] > start_edge_ticks); // find starting index closes to sample start edge
 
-            uint64_t base_ticks = stamp_edges_ticks[idx]; // used to subtract from sample edges
+            uint64_t base_ticks = stamp_edges_ticks[idx]; // store base sample , used to normalize samples
 
-            vector<int> sample_edges;
+            vector<int> sample_edges;  // create normalized sample edge vector and copy in from sample circular buffer
 
-            while(++idx != top_idx) sample_edges.push_back(stamp_edges_ticks[idx] - base_ticks);
+            while(++idx != sample_end_idx) sample_edges.push_back(stamp_edges_ticks[idx] - base_ticks);
 
         // send slice for detection;
         

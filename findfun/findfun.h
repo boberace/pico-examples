@@ -13,9 +13,9 @@ class findfun{
 public:
 void begin( float CON_PITCH = 440.0, // concert pitch
             float SAMP_FREQ = 2.5*1000000, // sample edge frequency (hz)      
-            int LOW_MIDI_INDEX = 38,
-            int HIGH_MIDI_INDEX = 66+1,
-            int NUM_CORR_SHIFTS = 20
+            int LOW_MIDI_INDEX = 38,  // lowese midi to test
+            int HIGH_MIDI_INDEX = 66+1, // highest midi to test
+            int NUM_CORR_SHIFTS = 20 // resolution of correlation
             );
 
 int find_midi_cent(const vector<int> &sample_edges); 
