@@ -50,7 +50,7 @@ App|Description
 App|Description
 ---|---
 [example](findfun/example)| generates test samples to run in findfun library.
-[instrutune](findfun/instrutune)| instrament tuner using findfun library.
+[instrutune](findfun/instrutune)| instrument tuner using findfun library.
 
 ### Flash
 
