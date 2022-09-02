@@ -188,6 +188,12 @@ App|Description
 [rtc_alarm](rtc/rtc_alarm) | Set an alarm on the RTC to trigger an interrupt at a date/time 5 seconds into the future.
 [rtc_alarm_repeat](rtc/rtc_alarm_repeat) | Trigger an RTC interrupt once per minute.
 
+### siggen
+
+App|Description
+---|---
+[siggen](siggen) | signal generator.
+
 ### SPI
 
 App|Description

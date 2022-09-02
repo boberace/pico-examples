@@ -6,6 +6,7 @@ add_executable(instrutune
         )
 
 pico_generate_pio_header(instrutune ${CMAKE_CURRENT_LIST_DIR}/blink.pio)
+pico_generate_pio_header(instrutune ${CMAKE_CURRENT_LIST_DIR}/strobe.pio)
 
 # pull in common dependencies
 target_link_libraries(instrutune 
