@@ -1,0 +1,155 @@
+; pin change detection - forward acting decade counter
+; isr set to shift to the left
+; osr set to shift to the left
+.program test      
+.origin 0
+    jmp sample_pin
+    jmp pin_rising
+    jmp sample_pin
+    jmp sample_pin
+.wrap_target
+update:
+    mov pins, osr       ; light up led
+    out null, 1         ; shift one to the 
+sample_pin:
+    mov isr, null       ; clear isr
+    in y, 1             ; shift in previous pin state
+    in pins, 1          ; shift in current pin state
+    mov y, isr          ; copy pin states to y
+    mov pc, isr         ; reset program counter to relevent event
+pin_rising:
+    jmp !osre, next     ; jmp to next if osr is not empty
+    mov isr, null       ; clear isr
+    set x, 1            ; use x to shift in a 1 to the isr
+    in x, 1             ; shift 1 in to the isr
+    mov osr, isr        ; copy isr to osr
+    set x, 16           ; set x to #leds
+next:    
+    jmp x-- update      ; if x is 0 then flush osr
+    mov osr, null       ; clear osr
+    out null, 32        ; push zeros out to end to indicate empty
+    jmp pin_rising
+.wrap
+
+
+; pin change detection - reverse acting decade counter
+; isr set to shift to the left
+; osr set to shift to the right
+.program test      
+.origin 0
+    jmp sample_pin
+    jmp pin_rising
+    jmp sample_pin
+    jmp sample_pin
+.wrap_target
+update:
+    mov pins, osr       ; light up led
+    out null, 1         ; shift one to the 
+sample_pin:
+    mov isr, null       ; clear isr
+    in y, 1             ; shift in previous pin state
+    in pins, 1          ; shift in current pin state
+    mov y, isr          ; copy pin states to y
+    mov pc, isr         ; reset program counter to relevent event
+pin_rising:
+    jmp !osre, next     ; jmp to next if osr is not empty
+    set x, 1            ; use x to shift in a 1 to the isr
+    in x, 31            ; shift 1 in all the way to the right of the isr
+    mov osr, isr        ; copy isr to osr
+    out null, 16        ; shift (32 - #leds) to light up last led
+next:    
+    jmp update
+.wrap
+
+; pin change detection - decrement scratch on pin_rising and show on leds
+; isr set to shift to the left
+.program test      
+.origin 0
+    jmp sample_pin
+    jmp pin_rising
+    jmp sample_pin
+    jmp sample_pin
+.wrap_target
+update:
+    mov pins, y
+sample_pin:
+    mov isr, null
+    in osr, 1
+    in pins, 1
+    mov osr, isr    
+    mov pc, isr
+pin_rising:
+    jmp y-- dec_cont    ; if y is zero then initialize y in the next lines before the jump address
+    mov y, !null        ; the next three lines intialize each bit of y to 1 that corresponds to an led 
+    in y, 16            ; 
+    mov y, isr          ; 
+dec_cont:
+    jmp update
+.wrap
+
+; pin change detection - increment scratch on pin_rising and show on leds
+; isr set to shift to the left
+.program test      
+.origin 0
+    jmp sample_pin
+    jmp pin_rising
+    jmp sample_pin
+    jmp sample_pin
+.wrap_target
+update:
+    mov pins, y
+sample_pin:
+    mov isr, null
+    in osr, 1
+    in pins, 1
+    mov osr, isr    
+    mov pc, isr
+pin_rising:
+    mov x, !y
+	jmp x--, increment_cont
+increment_cont:
+    mov y, !x
+.wrap
+
+; pin change detection - show pin_rising on one led and pin_falling on other led
+; isr set to shift to the left
+.program test      
+.origin 0
+    jmp sample_pin
+    jmp pin_rising
+    jmp pin_falling
+    jmp sample_pin
+.wrap_target
+update:
+    mov pins, y
+sample_pin:
+    mov isr, null
+    in osr, 1
+    in pins, 1
+    mov osr, isr    
+    mov pc, isr
+pin_rising:
+    set y, 1
+    jmp update
+pin_falling:
+    set y, 2
+.wrap
+
+; set two leds on state of pin
+; isr set to shift to the left
+.program test      
+.origin 0
+    jmp seta
+    jmp setb
+loop:
+    mov isr, null
+    in pins, 1
+    mov pc, isr
+seta:
+    set x, 1
+    mov pins, x
+    jmp loop
+setb:
+    set x, 2
+    mov pins, x
+    jmp loop

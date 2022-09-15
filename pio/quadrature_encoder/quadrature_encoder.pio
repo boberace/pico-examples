@@ -6,7 +6,8 @@
 
 .program quadrature_encoder
 
-; this code must be loaded into address 0, but at 29 instructions, it probably
+; this code must be loaded into address 0, ?because of mov pc is not relative?
+;but at 29 instructions, it probably
 ; wouldn't be able to share space with other programs anyway
 .origin 0
 

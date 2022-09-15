@@ -8,9 +8,10 @@
 
 .program blink
     pull block
-    out y, 32
+    ;out y, 32
 .wrap_target
-    mov x, y
+    ;mov x, y
+    mov x, OSR
     set pins, 1   ; Turn LED on
 lp1:
     jmp x-- lp1   ; Delay for (x + 1) cycles, x is a 32 bit number

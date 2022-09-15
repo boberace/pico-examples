@@ -17,14 +17,14 @@
 // #define range_test // if defined; creates pure test signals that run through the midi range
 
 #define I2C0_BUADRATE 400*1000
-#define PIN_LED 25
-#define PIN_TRIG 26
-#define PINS_STROBE_MASK 0x0000FFFF // first 16 gpio
 
-#define PIN_SENSE1 27 
-// #define PIN_SENSE2 22
-#define PIN_I2C_SDA 16 
-#define PIN_I2C_SCL 17 
+#define PIN_I2C_SDA 16u
+#define PIN_I2C_SCL 17u
+#define PIN_TEST 19u
+#define PIN_SENSE2 22u
+#define PIN_LED 25u
+#define PIN_TRIG 26u
+#define PIN_SENSE1 27u
 
 #define SM_BLINK 0     // blink program state machine
 PIO PIO_BLINK = pio0;  // blink program pio
@@ -129,18 +129,18 @@ int main() {
     setup_i2c0(); 
     setup_oled();
 
+    gpio_init(PIN_TEST);
+    gpio_set_dir(PIN_TEST, GPIO_OUT);
+    gpio_put(PIN_TEST, 1);
+
     gpio_init(PIN_LED);
     gpio_set_dir(PIN_LED, GPIO_OUT);
 
-    // gpio_init(PIN_SENSE2);
-    // gpio_set_dir(PIN_SENSE2, GPIO_IN);
-    // gpio_set_input_hysteresis_enabled(PIN_SENSE2, true);
+    gpio_init(PIN_SENSE1);
+    gpio_set_dir(PIN_SENSE1, GPIO_IN);
 
-    // gpio_init_mask(PINS_STROBE_MASK);
-    // gpio_set_dir_out_masked(PINS_STROBE_MASK);
-    // gpio_set_mask(PINS_STROBE_MASK);
-    // uint strobe_offset = pio_add_program(PIO_STROBE, &strobe_program);
     uint blink_offset = pio_add_program(PIO_BLINK, &blink_program); 
+    uint strobe_offset = pio_add_program(PIO_STROBE, &strobe_program);
 
     printf("Hello GPIO IRQ\n");
     gpio_set_irq_enabled_with_callback(PIN_SENSE1, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &gpio_callback);
@@ -154,9 +154,10 @@ int main() {
     int idx_counter = HMI-LMI;
 
     // delete following
-    // float tf = ConPitch*(pow(2,((36*100. + 0 -6900.)/1200.)));
-    // blink_pin_forever(PIO_BLINK, SM_BLINK, blink_offset, PIN_TRIG, tf);
-    // strobe_pins_forever(PIO_STROBE, SM_STROBE, strobe_offset, PIN_SENSE2, tf);
+    float tf = ConPitch*(pow(2,((57*100. + 0 -6900.)/1200.)));
+    // tf=1;
+    blink_pin_forever(PIO_BLINK, SM_BLINK, blink_offset, PIN_TRIG, tf+1);
+    strobe_pins_forever(PIO_STROBE, SM_STROBE, strobe_offset, PIN_SENSE2, tf);
 
     while(1){  // core 0 loop ***  core 0 loop ***  core 0 loop ***  core 0 loop ***  core 0 loop *** 
 
@@ -218,9 +219,9 @@ void strobe_pins_forever(PIO pio, uint sm, uint offset, uint sense_pin, float fr
 
     printf("Srobing pins at %.2f Hz\n", freq);
 
-    // PIO counter program takes 3 more cycles in total than we pass as
-    // input (wait for n + 1; mov; jmp)
-    pio->txf[sm] = (clock_get_hz(clk_sys) / (2 * freq)) - 3;
+        // set the frequency 16 times the target frequency (16 = num leds)
+        // takeout 5 cycles for processing between samples
+    pio->txf[sm] = (clock_get_hz(clk_sys) / ( freq * 16)) - 5;
 }
 
 static const char *gpio_irq_str[] = {

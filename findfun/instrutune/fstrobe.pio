@@ -1,0 +1,44 @@
+; emulates serial in parallel output shift register (595) used for strobe tuner
+; sample sense_pin in at equal intervals then display when full (number of leds)
+; sample at number of leds times the target frequency
+
+.program strobe
+    pull block          ; pull in number of delay cycles from user input
+.wrap_target
+    mov x, osr          ; refresh x delay
+    set y, 14           ; set to number of leds - 2 (number of leds -1 loops for lp1 then one more for lp2)
+    mov isr, null       ; zero the isr and reset shift counter
+lp1:
+    jmp x-- lp1         ; delay between shifts (minus 5 cycles for the other instructions between shifts)
+    in pins, 1          ; sample sense pin and shift into input shift register
+    mov x, osr [2]      ; refresh x delay and skip 2 cycles (this to match the cycles for when updating out pins on last loop)
+    jmp y-- lp1         ; next led
+lp2:
+    jmp x-- lp2         ; delay between shifts (minus 5 cycles for the other instructions between shifts)
+    in pins, 1          ; last sample of sens pin for last led in array
+    mov pins, isr       ; copy isr to out pins
+.wrap             
+
+% c-sdk {
+// this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
+
+void strobe_program_init(PIO pio, uint sm, uint offset, float freq, uint sense_pin) {
+   pio_sm_config c = strobe_program_get_default_config(offset);
+   sm_config_set_in_pins(&c, sense_pin);
+   sm_config_set_out_pins(&c, 0 ,16);
+
+   pio_sm_set_consecutive_pindirs(pio, sm, sense_pin, 1, false);
+   pio_sm_set_consecutive_pindirs(pio, sm, 0, 16, true);
+
+	// shift to left, autopull disabled
+    sm_config_set_in_shift(&c, false, false, 32);
+
+   pio_gpio_init(pio, sense_pin);
+
+   for (auto i = 0; i < 16; i++){
+        pio_gpio_init(pio, i);
+   }
+
+   pio_sm_init(pio, sm, offset, &c);
+}
+%}

@@ -5,6 +5,8 @@ pico_generate_pio_header(pio_blink ${CMAKE_CURRENT_LIST_DIR}/blink.pio)
 # however, alternatively you can choose to generate it somewhere else (in this case in the source tree for check in)
 #pico_generate_pio_header(pio_blink ${CMAKE_CURRENT_LIST_DIR}/blink.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR})
 
+pico_generate_pio_header(pio_blink ${CMAKE_CURRENT_LIST_DIR}/test.pio)
+
 target_sources(pio_blink 
                         PRIVATE blink.c
                         )

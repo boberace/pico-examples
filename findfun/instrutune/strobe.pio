@@ -1,24 +1,23 @@
 ; led strobe
 ; pio clocks in samples to the ISR and then moves to the strobe pins
-; there are 15 delays between each sample - this allows the highest
-; clock divider for the complete midi frequency range using 16 strobe leds
-
+; there are x clock cycles per sample into input shift register
 
 .program strobe
 .wrap_target
-    set x, 15           ; set x to number of leds - 1
+    set x, 14           ; set x to number of leds - 2
+    mov pins, isr
+    mov isr, null
 loop:
-    in pins, 1 [13]     ; sample sense_pin x times and delay 13 cycles
-    jmp x--, loop       ;
-    in pins, 1 [12]     ; sample sense_pin last time in period and delay one cycle less then previous
-    mov pins, ISR       ; to compensate for the extra cycle caused by moving the ISR to the pins
-.wrap 
+    in pins, 1  [13]
+    jmp x--, loop    
+    in pins, 1  [11]
+.wrap
 
 
 % c-sdk {
 // this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
 
-void strobe_program_init(PIO pio, uint sm, uint offset, uint sense_pin, float target_freq) {
+void strobe_program_init(PIO pio, uint sm, uint offset, float target_freq, uint sense_pin ) {
 
    pio_gpio_init(pio, sense_pin);
    pio_sm_set_consecutive_pindirs(pio, sm, sense_pin, 1, false);
@@ -28,12 +27,14 @@ void strobe_program_init(PIO pio, uint sm, uint offset, uint sense_pin, float ta
    }
     pio_sm_set_consecutive_pindirs(pio, sm, 0, 16, true);
 
-   pio_sm_config c = blink_program_get_default_config(offset);
+   pio_sm_config c = strobe_program_get_default_config(offset);
    sm_config_set_in_pins(&c, sense_pin);
    sm_config_set_out_pins(&c, 0 ,16);
+	
+    sm_config_set_in_shift(&c, false, false, 32); // shift to left, autopull disabled
 
-   float freq = (float)clock_get_hz(clk_sys) / (16*15*target_freq); // 16 leds (1 + 13 + 1 = 15) count per instruction
-   sm_config_set_clkdiv(&c, freq);
+   float div = (float)clock_get_hz(clk_sys) / (16*15*target_freq); // 16 leds * x cycles per sample in
+   sm_config_set_clkdiv(&c, div);
 
    pio_sm_init(pio, sm, offset, &c);
 }

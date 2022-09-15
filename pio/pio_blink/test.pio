@@ -1,0 +1,45 @@
+; pin change detection - decrementing counter on pin change
+; isr set to shift to the left
+.program test      
+.origin 0
+    jmp sample_pin
+    jmp stamp
+    jmp stamp
+    jmp sample_pin
+.wrap_target
+sample_pin:
+    x--
+    mov isr, null
+    in y, 1
+    in pins, 1
+    mov y, isr    
+    mov pc, isr
+stamp:
+    x--
+    mov osr, x
+    push [3]
+.wrap
+
+% c-sdk {
+// this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
+
+void test_program_init(PIO pio, uint sm, uint offset, uint in_pin, uint out_pin_base, uint num_pins) {
+    pio_sm_config c = test_program_get_default_config(offset);
+
+    pio_sm_set_consecutive_pindirs(pio, sm, in_pin, 1, false);
+    pio_sm_set_consecutive_pindirs(pio, sm, out_pin_base, num_pins, true);
+
+    sm_config_set_in_pins(&c, in_pin);
+    sm_config_set_out_pins(&c, out_pin_base ,num_pins);
+
+	
+	sm_config_set_in_shift(&c, false, false, 32); // isr shift to left, autopull disabled
+    sm_config_set_out_shift(&c, false, false, 32); // osr shift to left, autopull disabled
+
+    pio_gpio_init(pio, in_pin);
+    for(uint i = 0; i < num_pins; ++i)
+        pio_gpio_init(pio, i + out_pin_base );
+   
+    pio_sm_init(pio, sm, offset, &c);
+}
+%}
