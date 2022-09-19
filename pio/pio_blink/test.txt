@@ -1,3 +1,27 @@
+; pin change detection - decrementing counter on pin change
+; isr set to shift to the left
+.program test      
+.origin 0
+    jmp sample_pin
+    jmp stamp
+    jmp stamp
+    jmp sample_pin
+.wrap_target
+sample_pin:
+    jmp x-- n1
+n1:
+    mov isr, null
+    in y, 1
+    in pins, 1
+    mov y, isr    
+    mov pc, isr
+stamp:
+    jmp x-- n2
+n2:
+    mov osr, x
+    push [3]
+.wrap
+
 ; pin change detection - forward acting decade counter
 ; isr set to shift to the left
 ; osr set to shift to the left

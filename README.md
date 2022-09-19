@@ -23,6 +23,12 @@ App|Description
 [onboard_temperature](adc/onboard_temperature)|Display the value of the onboard temperature sensor.
 [microphone_adc](adc/microphone_adc)|Read analog values from a microphone and plot the measured sound amplitude.
 
+### Charlieplex
+
+App|Description
+---|---
+[charlieplex](charlieplex)| Demonstration of Charliplexing LEDs(Tri-State Multiplexing of LEDs)
+
 ### Clocks
 
 App|Description

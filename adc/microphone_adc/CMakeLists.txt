@@ -10,3 +10,6 @@ pico_add_extra_outputs(microphone_adc)
 
 # add url via pico_set_program_url
 example_auto_set_url(microphone_adc)
+
+pico_enable_stdio_usb(microphone_adc 1)
+pico_enable_stdio_uart(microphone_adc 0)

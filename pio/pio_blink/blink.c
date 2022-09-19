@@ -36,7 +36,7 @@ int main() {
 
     uint test_offset = pio_add_program(PIO_TEST, &test_program);    
 
-    blink_pin_forever(PIO_BLINK, SM_BLINK, blink_offset, PIN_LED, 1);
+    blink_pin_forever(PIO_BLINK, SM_BLINK, blink_offset, PIN_LED, 16);
     test_pin_forever(PIO_TEST, SM_TEST, test_offset, PIN_SENSE1, PIN_BASE_LEDARRAY, NUM_LEDS);
 
     while (1)

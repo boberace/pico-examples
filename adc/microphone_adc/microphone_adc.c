@@ -21,11 +21,13 @@
    GND (pin 38)  -> GND on microphone board
 */
 
-#define ADC_NUM 0
+#define ADC_NUM 1
 #define ADC_PIN (26 + ADC_NUM)
 #define ADC_VREF 3.3
 #define ADC_RANGE (1 << 12)
 #define ADC_CONVERT (ADC_VREF / (ADC_RANGE - 1))
+
+#define PIN_HYST 26
 
 int main() {
     stdio_init_all();
@@ -38,11 +40,15 @@ int main() {
     adc_gpio_init( ADC_PIN);
     adc_select_input( ADC_NUM);
 
+    gpio_init(PIN_HYST);
+    gpio_set_dir(PIN_HYST, 1);
+    gpio_put(PIN_HYST, 1);
+
     uint adc_raw;
     while (1) {
         adc_raw = adc_read(); // raw voltage from ADC
-        printf("%.2f\n", adc_raw * ADC_CONVERT);
-        sleep_ms(10);
+        printf("%.2f\n", adc_raw * ADC_CONVERT);        
+        sleep_ms(1);
     }
 
     return 0;
