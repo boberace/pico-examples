@@ -8,28 +8,32 @@
  * To light up an led you drive one pin high and one pin low with the rest turn to inputs.
  * checkout https://en.wikipedia.org/wiki/Charlieplexing
  */
-
-#include "pico/stdlib.h"
 #include <stdio.h>
 
-#define FPS 50
+#include "pico/stdlib.h"
+#include "hardware/pio.h"
+#include "hardware/clocks.h"
+#include "hardware/dma.h"
+
+#include "charlieplex.pio.h"
+
+#define FPS 25
 
 #define NUM_PINS 6
 #define NUM_LEDS NUM_PINS*(NUM_PINS-1)
 uint pins[NUM_PINS] = {17, 18, 19, 20, 21, 22};
 uint32_t pins_mask = 0; // used to generate a 32 bit pin mask
-uint led_pins_index[NUM_LEDS][2]={ // led pins - number is index of pins array
+uint led_pins_index[NUM_LEDS][2]={ // led pins - number is index of pins array set in pio
     {0,1}, {1,0},
     {0,2}, {2,0}, {1,2}, {2,1}, 
     {0,3}, {3,0}, {1,3}, {3,1}, {2,3}, {3,2},
     {0,4}, {4,0}, {1,4}, {4,1}, {2,4}, {4,2}, {3,4}, {4,3},
     {0,5}, {5,0}, {1,5}, {5,1}, {2,5}, {5,2}, {3,5}, {5,3}, {4,5}, {5,4}
     };
-uint led_pins[NUM_LEDS][2];
+
 uint32_t led_out_masks[NUM_LEDS]; 
 uint32_t led_hi_masks[NUM_LEDS]; 
-
-
+uint32_t led_pio_dma[NUM_LEDS*2];
 
 uint32_t bALPHA[7] ={
 0b000000000000000001011111110110, //A
@@ -55,7 +59,15 @@ uint32_t bNUMER[10] = {
 uint32_t bSHARP = 0b000000000000000010000000000000;
 uint32_t bFLAT = 0b000000000000000100000000000000;
 uint32_t bDISPLAY = 0;
+uint32_t led_freq = FPS*NUM_LEDS;
 uint32_t led_micros = 1000000/(FPS*NUM_LEDS);
+
+int dma_chan_cplex;
+
+void dma_handler() {
+    dma_hw->ints0 = 1u << dma_chan_cplex;
+    dma_channel_set_read_addr(dma_chan_cplex, &led_pio_dma, true);
+}
 
 int main() {
 
@@ -72,85 +84,81 @@ int main() {
 
     for (uint i = 0; i < NUM_LEDS; ++i){
 
-        led_pins[i][0] = pins[led_pins_index[i][0]];
-        led_pins[i][1] = pins[led_pins_index[i][1]];
-
-        uint a = led_pins[i][0];
-        uint c = led_pins[i][1];
+        uint a = led_pins_index[i][0];
+        uint c = led_pins_index[i][1];
 
         led_out_masks[i] = (1 << a) | (1 << c); 
         led_hi_masks[i] = (1 << a); 
     }
 
+    for (uint i = 0; i < NUM_LEDS; ++i){
+
+        led_pio_dma[2*i+0]=led_out_masks[i];
+        led_pio_dma[2*i+1]=0;
+
+    }
+
     gpio_set_dir_in_masked(pins_mask);
     gpio_init_mask(pins_mask);
 
+
+    uint offset_cplex = pio_add_program(pio0, &charlieplex_program);
+    charlieplex_program_init(pio0, 0, offset_cplex, led_freq, pins[0], NUM_PINS);
+
+    dma_chan_cplex = dma_claim_unused_channel(true);
+    dma_channel_config c = dma_channel_get_default_config(dma_chan_cplex);
+    channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
+    channel_config_set_read_increment(&c, true);
+    channel_config_set_dreq(&c, DREQ_PIO0_TX0);
+
+    dma_channel_configure(
+        dma_chan_cplex,
+        &c,
+        &pio0_hw->txf[0], 
+        led_pio_dma,             
+        NUM_LEDS*2, 
+        false            
+    );
+
+    // Tell the DMA to raise IRQ line 0 when the channel finishes a block
+    dma_channel_set_irq0_enabled(dma_chan_cplex, true);
+
+    // Configure the processor to run dma_handler() when DMA IRQ 0 is asserted
+    irq_set_exclusive_handler(DMA_IRQ_0, dma_handler);
+    irq_set_enabled(DMA_IRQ_0, true);
+
+    // Manually call the handler once, to trigger the first transfer
+    dma_handler();
+
     uint led_counter = 0;
-    uint frame_counter = 0;
     uint alpha_counter = 0;
     uint numer_counter = 0;
+    uint previous_millis = 0;
+    uint curr_millis = 0;
     while(true){
 
-        gpio_put_masked(pins_mask, 0);
-        gpio_set_dir_in_masked(pins_mask);
-        gpio_set_dir_out_masked(led_out_masks[led_counter]);
-        gpio_put(led_pins[led_counter][0], (bDISPLAY & ( 1 << led_counter)));
+        curr_millis = to_ms_since_boot(get_absolute_time());
+        if ((curr_millis - previous_millis) > 1000){
+            previous_millis = curr_millis;
+
+            for(uint i = 0; i < NUM_LEDS; ++i ){ 
+                led_pio_dma[2*i + 1] = (led_hi_masks[i] )* ((bDISPLAY & ( 1 << i)) > 0);
+            }
+
+            bDISPLAY = bALPHA[alpha_counter] | bNUMER[numer_counter];
+
+            printf(" ac: %d, nc: %d\n", alpha_counter,numer_counter );
+
+            alpha_counter++;
+            alpha_counter%=7;
+            numer_counter++;
+            numer_counter%=10;
+        }      
 
         led_counter++;
         led_counter%=NUM_LEDS;
-        if(led_counter == 0) {
-            frame_counter++;
-
-            if(frame_counter%FPS == 0){
-                alpha_counter++;
-                alpha_counter%=7;
-                numer_counter++;
-                numer_counter%=10;
-
-                bDISPLAY = bALPHA[alpha_counter] | bNUMER[numer_counter];
-
-                printf(" ac: %d, nc: %d\n", alpha_counter,numer_counter );
-            }
-        }
 
         sleep_us(led_micros);
     }
-
-/*
-#ifndef LED_16_ARRAY
-    #ifndef PICO_DEFAULT_LED_PIN
-    #warning blink example requires a board with a regular LED
-    #else
-        const uint LED_PIN = PICO_DEFAULT_LED_PIN;
-        gpio_init(LED_PIN);
-        gpio_set_dir(LED_PIN, GPIO_OUT);
-        while (true) {
-            gpio_put(LED_PIN, 1);
-            sleep_ms(250);
-            gpio_put(LED_PIN, 0);
-            sleep_ms(250);
-        }
-    #endif
-#else
-
-    for(auto i = 0; i < 16 ; ++i){
-        gpio_init(i);
-        gpio_set_dir(i, GPIO_OUT);
-    }
-        while(true){
-
-            for(auto i = 0; i < 16 ; ++i){
-                gpio_put(i, 1);
-                sleep_ms(100);
-            }
-            for(auto i = 0; i < 16 ; ++i){
-                gpio_put(i, 0);
-                sleep_ms(100);
-            }
-
-        }
-
-#endif
-*/
-
 }
+

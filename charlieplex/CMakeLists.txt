@@ -1,9 +1,17 @@
-add_executable(charlieplex
-        charlieplex.c
-        )
+add_executable(charlieplex)
+
+pico_generate_pio_header(charlieplex ${CMAKE_CURRENT_LIST_DIR}/charlieplex.pio)
+
+target_sources(charlieplex PRIVATE 
+                charlieplex.c)
 
 # pull in common dependencies
-target_link_libraries(charlieplex pico_stdlib)
+target_link_libraries(charlieplex PRIVATE
+                        pico_stdlib
+                        hardware_pio
+                        hardware_dma
+                        hardware_irq
+                        )
 
 # enable usb output, disable uart output
 pico_enable_stdio_usb(charlieplex 1)
