@@ -4,10 +4,9 @@
 
 
 .program charlieplex    
-    set x, 0
-.wrap_target      
+
+.wrap_target    
     out pindirs, 32  
-    mov pins, x
     out pins, 32 [31]
 .wrap             
 

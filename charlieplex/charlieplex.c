@@ -7,6 +7,10 @@
  * 6*5 = 30 leds.  the led refresh frequency is 30 leds * 30 frames per second = 900 hz
  * To light up an led you drive one pin high and one pin low with the rest turn to inputs.
  * checkout https://en.wikipedia.org/wiki/Charlieplexing
+ * 
+ * 
+ * tode: set up another dma channel to replace irq callback
+ * 
  */
 #include <stdio.h>
 
@@ -71,15 +75,10 @@ void dma_handler() {
 
 int main() {
 
-    bDISPLAY = bALPHA[0] | bNUMER[0] | bSHARP;
-
     stdio_init_all();
 
     for (uint i = 0; i < NUM_PINS; ++i){
-        uint pin = pins[i];
-        pins_mask |= (1 << pin);
-        gpio_set_drive_strength(pin, GPIO_DRIVE_STRENGTH_12MA); // two 150 ohm resistors in series
-        gpio_disable_pulls(pin);
+        pins_mask |= (1 <<  pins[i]);
     }
 
     for (uint i = 0; i < NUM_LEDS; ++i){
@@ -105,6 +104,12 @@ int main() {
     uint offset_cplex = pio_add_program(pio0, &charlieplex_program);
     charlieplex_program_init(pio0, 0, offset_cplex, led_freq, pins[0], NUM_PINS);
 
+    for (uint i = 0; i < NUM_PINS; ++i){
+        uint pin = pins[i];
+        gpio_set_drive_strength(pin, GPIO_DRIVE_STRENGTH_12MA); // two 150 ohm resistors in series
+        gpio_disable_pulls(pin);
+    }
+
     dma_chan_cplex = dma_claim_unused_channel(true);
     dma_channel_config c = dma_channel_get_default_config(dma_chan_cplex);
     channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
@@ -129,6 +134,8 @@ int main() {
 
     // Manually call the handler once, to trigger the first transfer
     dma_handler();
+
+    bDISPLAY = 0xFFFFFFFF;
 
     uint led_counter = 0;
     uint alpha_counter = 0;
