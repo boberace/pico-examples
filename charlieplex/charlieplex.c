@@ -21,10 +21,10 @@
 
 #include "charlieplex.pio.h"
 
-#define CPLEX_PIO pio0
-#define CPLEX_SM 0
+PIO CPLEX_PIO = pio0;
+uint CPLEX_SM = 0;
 
-#define FPS 25
+#define FPS 50
 
 #define NUM_PINS 6
 #define NUM_LEDS NUM_PINS*(NUM_PINS-1)
@@ -65,19 +65,17 @@ uint32_t bNUMER[10] = {
 };
 uint32_t bSHARP = 0b000000000000000010000000000000;
 uint32_t bFLAT = 0b000000000000000100000000000000;
-uint32_t bDISPLAY = 0;
+uint32_t bDISPLAY = 0xFFFFFFFF;
 uint32_t led_freq = FPS*NUM_LEDS;
 uint32_t led_micros = 1000000/(FPS*NUM_LEDS);
-
-
 
 int dma_chan_cplex_leds;
 int dma_chan_cplex_loop;
 
-// void dma_handler_cplex_leds() {
-//     dma_hw->ints0 = 1u << dma_chan_cplex_leds;
-//     dma_channel_set_read_addr(dma_chan_cplex_leds, &led_pio_masks, true);
-// }
+void dma_handler_cplex_leds() {
+    dma_hw->ints0 = 1u << dma_chan_cplex_leds;
+    dma_channel_set_read_addr(dma_chan_cplex_leds, &led_pio_masks, true);
+}
 
 int main() {
 
@@ -99,7 +97,7 @@ int main() {
     for (uint i = 0; i < NUM_LEDS; ++i){
 
         led_pio_masks[2*i+0]=led_out_masks[i];
-        led_pio_masks[2*i+1]=0;
+        led_pio_masks[2*i + 1] = (led_hi_masks[i] )* ((bDISPLAY & ( 1 << i)) > 0);
 
     }
 
@@ -111,59 +109,46 @@ int main() {
 
     for (uint i = 0; i < NUM_PINS; ++i){
         uint pin = pins[i];
-        gpio_set_drive_strength(pin, GPIO_DRIVE_STRENGTH_12MA); // two 150 ohm resistors in series
+        gpio_set_drive_strength(pin, GPIO_DRIVE_STRENGTH_12MA); // two 150 o`hm resistors in series
         gpio_disable_pulls(pin);
     }
 
     dma_chan_cplex_leds = dma_claim_unused_channel(true);
-    dma_channel_config c = dma_channel_get_default_config(dma_chan_cplex_leds);
-    channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
-    channel_config_set_read_increment(&c, true);
-    channel_config_set_write_increment(&c, false);
-    // channel_config_set_dreq(&c, pio_get_dreq(CPLEX_PIO, CPLEX_SM, true));
-    channel_config_set_irq_quiet(&c, true);
-    channel_config_set_chain_to(&c,dma_chan_cplex_loop);
+    dma_chan_cplex_loop = dma_claim_unused_channel(true);
+
+    dma_channel_config c_leds = dma_channel_get_default_config(dma_chan_cplex_leds);
+    dma_channel_config c_loop = dma_channel_get_default_config(dma_chan_cplex_loop);    
+
+    //config led dma
+    channel_config_set_dreq(&c_leds, pio_get_dreq(CPLEX_PIO, CPLEX_SM, true));
+    channel_config_set_chain_to(&c_leds, dma_chan_cplex_loop);
+    channel_config_set_irq_quiet(&c_leds, true);
 
     dma_channel_configure(
         dma_chan_cplex_leds,
-        &c,
+        &c_leds,
         &pio0_hw->txf[CPLEX_SM], 
-        led_pio_masks,             
+        led_pio_masks,            
         NUM_LEDS*2, 
         false            
     );
 
-    // Tell the DMA to raise IRQ line 0 when the channel finishes a block
-    // dma_channel_set_irq0_enabled(dma_chan_cplex_leds, true);
+    //config loop dma
+    channel_config_set_read_increment(&c_loop, false);
+    channel_config_set_chain_to(&c_loop, dma_chan_cplex_leds);
+    channel_config_set_irq_quiet(&c_loop, true);
 
-    // Configure the processor to run dma_handler_cplex_leds() when DMA IRQ 0 is asserted
-    // irq_set_exclusive_handler(DMA_IRQ_0, dma_handler_cplex_leds);
-    // irq_set_enabled(DMA_IRQ_0, true);
-
-    // Manually call the handler once, to trigger the first transfer
-    // dma_handler_cplex_leds();
-
-    dma_chan_cplex_loop = dma_claim_unused_channel(true);
-    c = dma_channel_get_default_config(dma_chan_cplex_loop);
-    channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
-    channel_config_set_read_increment(&c, false);
-    channel_config_set_write_increment(&c, false);
-    channel_config_set_dreq(&c,0x3f);
-    channel_config_set_irq_quiet(&c, true);
-    channel_config_set_chain_to(&c,dma_chan_cplex_leds);
-
+    uint32_t * p_led_pio_masks = led_pio_masks;
     dma_channel_configure(
         dma_chan_cplex_loop,
-        &c,
-        &(dma_channel_hw_addr(dma_chan_cplex_leds)->read_addr), 
-        &led_pio_masks,             
+        &c_loop,
+        &dma_hw->ch[dma_chan_cplex_leds].read_addr, 
+        &p_led_pio_masks,            
         1, 
-        true            
+        false            
     );
 
-
-
-    bDISPLAY = 0xFFFFFFFF;
+    dma_start_channel_mask(1u << dma_chan_cplex_leds);    
 
     uint led_counter = 0;
     uint alpha_counter = 0;
@@ -182,8 +167,6 @@ int main() {
 
             bDISPLAY = bALPHA[alpha_counter] | bNUMER[numer_counter];
 
-            printf(" ac: %d, nc: %d\n", alpha_counter,numer_counter );
-
             alpha_counter++;
             alpha_counter%=7;
             numer_counter++;
@@ -193,7 +176,6 @@ int main() {
         led_counter++;
         led_counter%=NUM_LEDS;
 
-        sleep_us(led_micros);
     }
 }
 

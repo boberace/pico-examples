@@ -26,8 +26,8 @@ void charlieplex_program_init(PIO pio, uint sm, uint offset, float freq, uint ba
 
    sm_config_set_out_shift(&c, false, true, 33); 
 
-   //float div = (float)clock_get_hz(clk_sys) / (freq * 33); // frequency of individual led * number of cycles per change of led
-   //sm_config_set_clkdiv(&c, div);
+   float div = (float)clock_get_hz(clk_sys) / (freq * 33); // frequency of individual led * number of cycles per change of led
+   sm_config_set_clkdiv(&c, div);
 
    pio_sm_init(pio, sm, offset, &c);
    pio_sm_set_enabled(pio, sm, true);
