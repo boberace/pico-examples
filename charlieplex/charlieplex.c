@@ -15,8 +15,6 @@
  *   ###     ###
  *   # #     # #
  *   ### # # ###
- * 
- * todo : figure out why ghosting occurrs using pio.  Stopped when disabled gpio pulls during bitbanging
  *        
  * 
  *  * 
