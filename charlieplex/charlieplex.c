@@ -3,14 +3,22 @@
  * Charlieplexing is a multiplexing protocol that can drive many leds on a few pins.
  * It can drive only one led at a time (without fade) but can make nice displays if 
  * driving in rapid succession.  the amount of leds that can be driven from a 
- * number op pins (p) is p*(p-1) = #leds. This example uses six pins wich can drive
- * 6*5 = 30 leds.  the led refresh frequency is 30 leds * 30 frames per second = 900 hz
+ * number of pins (p) is p*(p-1) = #leds. This example uses six pins wich can drive
+ * 6*5 = 30 leds.  the led refresh frequency is 30 leds * 50 frames per second = 1500 hz
  * To light up an led you drive one pin high and one pin low with the rest turn to inputs.
+ * Only that one led circuit completes and the rest are unaffected
  * checkout https://en.wikipedia.org/wiki/Charlieplexing
  * 
+ *   30 leds arranged:
+ *   ### # # ###
+ *   # #     # #
+ *   ###     ###
+ *   # #     # #
+ *   ### # # ###
  * 
- * tode: set up another dma channel to replace irq callback
+ * todo : why ghosting occurrs using pio.  Stopped when bitbanged and disabled gpio pulls
  * 
+ *  * 
  */
 #include <stdio.h>
 
@@ -29,7 +37,7 @@ uint CPLEX_SM = 0;
 #define NUM_PINS 6
 #define NUM_LEDS NUM_PINS*(NUM_PINS-1)
 uint pins[NUM_PINS] = {17, 18, 19, 20, 21, 22};
-uint32_t pins_mask = 0; // used to generate a 32 bit pin mask
+uint32_t pins_mask = 0; // used to generate a 32 bit pin mask for setting gpio
 uint led_pins_index[NUM_LEDS][2]={ // led pins - number is index of pins array set in pio
     {0,1}, {1,0},
     {0,2}, {2,0}, {1,2}, {2,1}, 
@@ -38,9 +46,9 @@ uint led_pins_index[NUM_LEDS][2]={ // led pins - number is index of pins array s
     {0,5}, {5,0}, {1,5}, {5,1}, {2,5}, {5,2}, {3,5}, {5,3}, {4,5}, {5,4}
     };
 
-uint32_t led_out_masks[NUM_LEDS]; 
-uint32_t led_hi_masks[NUM_LEDS]; 
-uint32_t led_pio_masks[NUM_LEDS*2];
+uint32_t led_out_masks[NUM_LEDS];   // for setting gpio direction - two bits high for each led entry
+uint32_t led_hi_masks[NUM_LEDS];    // for setting gpio value - one bit high for each led entry
+uint32_t led_pio_masks[NUM_LEDS*2]; // for auto pulling into pio isr - alternate gpio direction and gpio value
 
 uint32_t bALPHA[7] ={
 0b000000000000000001011111110110, //A

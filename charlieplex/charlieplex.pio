@@ -1,5 +1,5 @@
-; simple charliplex program written for low instruction count
-; led will light up x% of time
+; simple charlieplex program written for low instruction count
+; each led will light up 32/33 = 97% of time
 ; create array of alternating pin directions and high pin in binary format
 
 
