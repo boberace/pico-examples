@@ -16,7 +16,8 @@
  *   # #     # #
  *   ### # # ###
  * 
- * todo : why ghosting occurrs using pio.  Stopped when bitbanged and disabled gpio pulls
+ * todo : figure out why ghosting occurrs using pio.  Stopped when disabled gpio pulls during bitbanging
+ *        
  * 
  *  * 
  */
@@ -73,17 +74,12 @@ uint32_t bNUMER[10] = {
 };
 uint32_t bSHARP = 0b000000000000000010000000000000;
 uint32_t bFLAT = 0b000000000000000100000000000000;
-uint32_t bDISPLAY = 0xFFFFFFFF;
+uint32_t bDISPLAY = 0x3FFFFFFF;  // first 30 bits are led status - set all high for led check
 uint32_t led_freq = FPS*NUM_LEDS;
 uint32_t led_micros = 1000000/(FPS*NUM_LEDS);
 
 int dma_chan_cplex_leds;
 int dma_chan_cplex_loop;
-
-void dma_handler_cplex_leds() {
-    dma_hw->ints0 = 1u << dma_chan_cplex_leds;
-    dma_channel_set_read_addr(dma_chan_cplex_leds, &led_pio_masks, true);
-}
 
 int main() {
 
@@ -105,7 +101,7 @@ int main() {
     for (uint i = 0; i < NUM_LEDS; ++i){
 
         led_pio_masks[2*i+0]=led_out_masks[i];
-        led_pio_masks[2*i + 1] = (led_hi_masks[i] )* ((bDISPLAY & ( 1 << i)) > 0);
+        led_pio_masks[2*i + 1] = (led_hi_masks[i] )*((bDISPLAY & ( 1 << i)) > 0);
 
     }
 

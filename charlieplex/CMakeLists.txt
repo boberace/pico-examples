@@ -10,7 +10,6 @@ target_link_libraries(charlieplex PRIVATE
                         pico_stdlib
                         hardware_pio
                         hardware_dma
-                        hardware_irq
                         )
 
 # enable usb output, disable uart output

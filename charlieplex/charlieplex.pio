@@ -3,12 +3,9 @@
 ; create array of alternating pin directions and high pin in binary format
 
 
-.program charlieplex    
-
-.wrap_target    
+.program charlieplex   
     out pindirs, 32  
     out pins, 32 [31]
-.wrap             
 
 % c-sdk {
 // this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
@@ -26,7 +23,7 @@ void charlieplex_program_init(PIO pio, uint sm, uint offset, float freq, uint ba
 
    sm_config_set_out_shift(&c, false, true, 33); 
 
-   float div = (float)clock_get_hz(clk_sys) / (freq * 33); // frequency of individual led * number of cycles per change of led
+   float div = (float)clock_get_hz(clk_sys) / (freq*33); // frequency of individual led * number of cycles per change of led
    sm_config_set_clkdiv(&c, div);
 
    pio_sm_init(pio, sm, offset, &c);
