@@ -154,9 +154,12 @@ int main() {
     int idx_counter = HMI-LMI;
 
     // delete following
-    float tf = ConPitch*(pow(2,((57*100. + 0 -6900.)/1200.)));
-    // tf=1;
-    blink_pin_forever(PIO_BLINK, SM_BLINK, blink_offset, PIN_TRIG, tf+1);
+    int mi = 57;
+    float tf = ConPitch*(pow(2,((mi*100. + 0 -6900.)/1200.)));
+    float tfp1 = ConPitch*(pow(2,(((mi+1)*100. + 0 -6900.)/1200.)));
+    float dtf = (tfp1-tf)*.01;
+
+    blink_pin_forever(PIO_BLINK, SM_BLINK, blink_offset, PIN_TRIG, tf + dtf);
     strobe_pins_forever(PIO_STROBE, SM_STROBE, strobe_offset, PIN_SENSE2, tf);
 
     while(1){  // core 0 loop ***  core 0 loop ***  core 0 loop ***  core 0 loop ***  core 0 loop *** 
