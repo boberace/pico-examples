@@ -17,6 +17,9 @@ target_link_libraries(picow_iperf_server_background
 
 pico_add_extra_outputs(picow_iperf_server_background)
 
+pico_enable_stdio_usb(picow_iperf_server_background 1)
+pico_enable_stdio_uart(picow_iperf_server_background 0)
+
 add_executable(picow_iperf_server_poll
         picow_iperf.c
         )
@@ -35,3 +38,5 @@ target_link_libraries(picow_iperf_server_poll
         )
 pico_add_extra_outputs(picow_iperf_server_poll)
 
+pico_enable_stdio_usb(picow_iperf_server_poll 1)
+pico_enable_stdio_uart(picow_iperf_server_poll 0)

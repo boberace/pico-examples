@@ -16,6 +16,9 @@ target_link_libraries(picow_access_point_background
 
 pico_add_extra_outputs(picow_access_point_background)
 
+pico_enable_stdio_usb(picow_access_point_background 1)
+pico_enable_stdio_uart(picow_access_point_background 0)
+
 add_executable(picow_access_point_poll
         picow_access_point.c
         dhcpserver/dhcpserver.c
@@ -30,4 +33,8 @@ target_link_libraries(picow_access_point_poll
         pico_stdlib
         )
 pico_add_extra_outputs(picow_access_point_poll)
+
+
+pico_enable_stdio_usb(picow_access_point_poll 1)
+pico_enable_stdio_uart(picow_access_point_poll 0)
 
