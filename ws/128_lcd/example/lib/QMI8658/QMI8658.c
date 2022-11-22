@@ -465,11 +465,12 @@ void QMI8658_enableWakeOnMotion(void)
 	unsigned char womCmd[3];
 	enum QMI8658_Interrupt interrupt = QMI8658_Int1;
 	enum QMI8658_InterruptState initialState = QMI8658State_low;
-	enum QMI8658_WakeOnMotionThreshold threshold = QMI8658WomThreshold_low;
+	enum QMI8658_WakeOnMotionThreshold threshold = QMI8658WomThreshold_high;
 	enum QMI8658_Ctrl9Command WoM_Setting = QMI8658_Ctrl9_Cmd_WoM_Setting;
-	unsigned char blankingTime = 0x00;
+	unsigned char blankingTime = 0x15;
 	const unsigned char blankingTimeMask = 0x3F;
-	unsigned char readStatus1 = 0;
+	unsigned char STATUS1_val = 0;
+	unsigned char IMU_INT1_val = 0;
 
 
 	QMI8658_enableSensors(QMI8658_CTRL7_DISABLE_ALL);
@@ -481,25 +482,27 @@ void QMI8658_enableWakeOnMotion(void)
 	QMI8658_write_reg(QMI8658Register_Cal1_L, womCmd[1]);
 	QMI8658_write_reg(QMI8658Register_Cal1_H, womCmd[2]);
 
-	QMI8658_write_reg(QMI8658Register_Ctrl9, WoM_Setting);		
+	QMI8658_write_reg(QMI8658Register_Ctrl9, WoM_Setting);	
 
-	while(DEV_Digital_Read(IMU_INT1_PIN) == 0){};
+	// while(IMU_INT1_val == 0){
+	// 	IMU_INT1_val = DEV_Digital_Read(IMU_INT1_PIN);
+	// 	QMI8658_printf("DEV_Digital_Read IMU_INT1_PIN %d \n", IMU_INT1_val);
+	// }	
 
-	while( readStatus1 == 0)
-	{
-		DEV_Delay_ms(100);
-		readStatus1 = QMI8658_readStatus1();
-		readStatus1 &= QMI8658_STATUS1_CMD_DONE;
-		QMI8658_printf("test\n");
-	};
-	
+	// STATUS1_val = QMI8658_readStatus1();
+	// QMI8658_printf("QMI8658_readStatus1  %08b \n", STATUS1_val);
 
-	while(DEV_Digital_Read(IMU_INT1_PIN) == 1){};
-	
+	// while(IMU_INT1_val == 1){
+	// 	IMU_INT1_val = DEV_Digital_Read(IMU_INT1_PIN);
+	// 	QMI8658_printf("DEV_Digital_Read IMU_INT1_PIN %d \n", IMU_INT1_val);
+	// 	STATUS1_val = QMI8658_readStatus1();
+	// 	QMI8658_printf("QMI8658_readStatus1  %08b \n", STATUS1_val);
+	// }	
 
-	QMI8658_enableSensors(QMI8658_CTRL7_ACC_ENABLE);
 
-	
+	QMI8658_write_reg(QMI8658Register_Cal1_L, womCmd[1]);
+
+	QMI8658_enableSensors(QMI8658_CTRL7_ACC_ENABLE);	
 
 }
 

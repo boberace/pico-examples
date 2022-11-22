@@ -34,6 +34,13 @@
 #include "pico/stdlib.h"
 #include "hardware/adc.h"
 
+// printf imu data forever
+#if 1
+# define printf_IMU(...) printf(__VA_ARGS__)
+#else
+# define printf_IMU(...)
+#endif
+
 int LCD_1in28_test_imu_wake(void)
 {
     if (DEV_Module_Init() != 0)
@@ -121,20 +128,24 @@ int LCD_1in28_test_imu_wake(void)
     LCD_1IN28_Display(BlackImage);
     DEV_SET_PWM(0);
 
-    // QMI8658_enableWakeOnMotion();
-	// while(DEV_Digital_Read(IMU_INT1_PIN) == 0);
-    // QMI8658_disableWakeOnMotion();
+    QMI8658_enableWakeOnMotion();
+	while(DEV_Digital_Read(IMU_INT1_PIN) == 0);
+    QMI8658_disableWakeOnMotion();
+
+    QMI8658_enableSensors(QMI8658_CTRL7_DISABLE_ALL);
+	QMI8658_config_acc(QMI8658AccRange_2g, QMI8658AccOdr_8000Hz, QMI8658Lpf_Enable, QMI8658St_Enable);
+    QMI8658_enableSensors(QMI8658_CTRL7_ACC_ENABLE);
 
     DEV_SET_PWM(10);
     while (true)
     {
         
         uint16_t result = adc_read();
-        printf("Raw value: 0x%03x, voltage: %f V\n", result, result * conversion_factor);
+        printf_IMU("Raw value: 0x%03x, voltage: %f V\n", result, result * conversion_factor);
         Paint_Clear(WHITE);
         QMI8658_read_xyz(acc, gyro, &tim_count);
-        printf("acc_x   = %4.3fmg , acc_y  = %4.3fmg , acc_z  = %4.3fmg\r\n", acc[0], acc[1], acc[2]);
-        printf("gyro_x  = %4.3fdps, gyro_y = %4.3fdps, gyro_z = %4.3fdps\r\n", gyro[0], gyro[1], gyro[2]);
+        printf_IMU("acc_x   = %4.3fmg , acc_y  = %4.3fmg , acc_z  = %4.3fmg\r\n", acc[0], acc[1], acc[2]);
+        printf_IMU("gyro_x  = %4.3fdps, gyro_y = %4.3fdps, gyro_z = %4.3fdps\r\n", gyro[0], gyro[1], gyro[2]);
 
         if (DEV_Digital_Read(IMU_INT1_PIN)){
             Paint_DrawString_EN(40, 25, "ONE", &Font16, RED, BLACK);
@@ -143,7 +154,7 @@ int LCD_1in28_test_imu_wake(void)
             Paint_DrawString_EN(120, 25, "TW0", &Font16, RED, WHITE);
         }
 
-        printf("tim_count = %d\r\n", tim_count);
+        printf_IMU("tim_count = %d\r\n", tim_count);
         Paint_DrawString_EN(30, 50, "ACC_X = ", &Font16, RED, BLACK);
         Paint_DrawString_EN(30, 75, "ACC_Y = ", &Font16, WHITE, BLACK);
         Paint_DrawString_EN(30, 100, "ACC_Z = ", &Font16, WHITE, BLACK);
