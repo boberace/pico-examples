@@ -1,4 +1,5 @@
 if (NOT PICO_NO_HARDWARE)
+    add_subdirectory(ad5593r_i2c)
     add_subdirectory(bmp280_i2c)
     add_subdirectory(bno055_i2c)
     add_subdirectory(bno085_i2c)

@@ -1,0 +1,1 @@
+// spi not used - dummy file included to avoid editing mfr driver files
