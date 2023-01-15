@@ -21,6 +21,7 @@ if (PICO_CYW43_SUPPORTED) # set by BOARD=pico-w
             add_subdirectory(tcp_client)
             add_subdirectory(tcp_server)
             add_subdirectory(freertos)
+            add_subdirectory(web_server)
         endif()
     endif()
 endif()
