@@ -50,6 +50,7 @@ App|Description
 [hello_dma](dma/hello_dma)| Use the DMA to copy data in memory.
 [control_blocks](dma/control_blocks)| Build a control block list, to program a longer sequence of DMA transfers to the UART.
 [channel_irq](dma/channel_irq)| Use an IRQ handler to reconfigure a DMA channel, in order to continuously drive data through a PIO state machine.
+[sniff_crc](dma/sniff_crc)| Use the DMA engine's 'sniff' capability to calculate a CRC32 on a data buffer.
 
 ### findfun
 
@@ -98,9 +99,11 @@ App|Description
 [mma8451_i2c](i2c/mma8451_i2c) | Read acceleration from a MMA8451 accelerometer and set range and precision for the data.
 [mpl3115a2_i2c](i2c/mpl3115a2_i2c) | Interface with an MPL3115A2 altimeter, exploring interrupts and advanced board features, via I2C.
 [mpu6050_i2c](i2c/mpu6050_i2c) | Read acceleration and angular rate values from a MPU6050 accelerometer/gyro, attached to an I2C bus.
-[oled_i2c](i2c/oled_i2c) | Convert and display a bitmap on a 128x32 SSD1306-driven OLED display
+[ssd1306_i2c](i2c/ssd1306_i2c) | Convert and display a bitmap on a 128x32 or 128x64 SSD1306-driven OLED display
 [pa1010d_i2c](i2c/pa1010d_i2c) | Read GPS location data, parse and display data via I2C.
 [pcf8523_i2c](i2c/pcf8523_i2c) | Read time and date values from a real time clock. Set current time and alarms on it.
+[ht16k33_i2c](i2c/ht16k33_i2c) | Drive a 4 digit 14 segment LED with an HT16K33.
+[slave_mem_i2c](i2c/slave_mem_i2c) | i2c slave example where the slave implements a 256 byte memory
 
 ### Interpolator
 
@@ -125,10 +128,11 @@ App|Description
 
 ### Pico W Networking
 
-These eaxmples are for the Pico W, and are only available for `PICO_BOARD=pico_w`
+These examples are for the Pico W, and are only available for `PICO_BOARD=pico_w`
 
 App|Description
 ---|---
+<<<<<<< HEAD
 [picow_access_point](pico_w/access_point)| Starts a WiFi access point, and fields DHCP requests.
 [picow_blink](pico_w/blink)| Blinks the on-board LED (which is connected via the WiFi chip).
 [picow_iperf_server](pico_w/iperf)| Runs an "iperf" server for WiFi speed testing.
@@ -137,6 +141,17 @@ App|Description
 [picow_tcp_server](pico_w/tcp_server)| A simple TCP server. You can use [python_test_tcp_client.py](pico_w/python_test_tcp/python_test_tcp_client.py) to connect to it.
 [picow_wifi_scan](pico_w/wifi_scan)| Scans for WiFi networks and prints the results.
 [picow_web_server](pico_w/web_server)| A simple web page server using lwIP.
+=======
+[picow_access_point](pico_w/wifi/access_point)| Starts a WiFi access point, and fields DHCP requests.
+[picow_blink](pico_w/wifi/blink)| Blinks the on-board LED (which is connected via the WiFi chip).
+[picow_iperf_server](pico_w/wifi/iperf)| Runs an "iperf" server for WiFi speed testing.
+[picow_ntp_client](pico_w/wifi/ntp_client)| Connects to an NTP server to fetch and display the current time.
+[picow_tcp_client](pico_w/wifi/tcp_client)| A simple TCP client. You can run [python_test_tcp_server.py](pico_w/wifi/python_test_tcp/python_test_tcp_server.py) for it to connect to.
+[picow_tcp_server](pico_w/wifi/tcp_server)| A simple TCP server. You can use [python_test_tcp_client.py](pico_w//wifi/python_test_tcp/python_test_tcp_client.py) to connect to it.
+[picow_tls_client](pico_w/wifi/tls_client)| Demonstrates how to make a HTTPS request using TLS.
+[picow_wifi_scan](pico_w/wifi/wifi_scan)| Scans for WiFi networks and prints the results.
+[picow_udp_beacon](pico_w/wifi/udp_beacon)| A simple UDP transmitter.
+>>>>>>> master
 
 #### FreeRTOS examples
 
@@ -145,10 +160,79 @@ to point to the FreeRTOS Kernel.
 
 App|Description
 ---|---
-[picow_freertos_iperf_server_nosys](pico_w/freertos/iperf)| Runs an "iperf" server for WiFi speed testing under FreeRTOS in NO_SYS=1 mode. The LED is blinked in another task
-[picow_freertos_iperf_server_sys](pico_w/freertos/iperf)| Runs an "iperf" server for WiFi speed testing under FreeRTOS in NO_SYS=0 (i.e. full FreeRTOS integration) mode. The LED is blinked in another task
-[picow_freertos_ping_nosys](pico_w/freertos/ping)| Runs the lwip-contrib/apps/ping test app under FreeRTOS in NO_SYS=1 mode.
-[picow_freertos_iperf_server_sys](pico_w/freertos/iperf)| Runs the lwip-contrib/apps/ping test app under FreeRTOS in NO_SYS=0 (i.e. full FreeRTOS integration) mode. The test app uses the lwIP \em socket API in this case. 
+[picow_freertos_iperf_server_nosys](pico_w/wifi/freertos/iperf)| Runs an "iperf" server for WiFi speed testing under FreeRTOS in NO_SYS=1 mode. The LED is blinked in another task
+[picow_freertos_iperf_server_sys](pico_w/wifi/freertos/iperf)| Runs an "iperf" server for WiFi speed testing under FreeRTOS in NO_SYS=0 (i.e. full FreeRTOS integration) mode. The LED is blinked in another task
+[picow_freertos_ping_nosys](pico_w/wifi/freertos/ping)| Runs the lwip-contrib/apps/ping test app under FreeRTOS in NO_SYS=1 mode.
+[picow_freertos_ping_sys](pico_w/wifi/freertos/ping)| Runs the lwip-contrib/apps/ping test app under FreeRTOS in NO_SYS=0 (i.e. full FreeRTOS integration) mode. The test app uses the lwIP _socket_ API in this case.
+
+### Pico W Bluetooth
+
+These examples are for the Pico W, and are only available for `PICO_BOARD=pico_w`.
+They are examples from the Blue Kitchen Bluetooth stack, see [here](https://bluekitchen-gmbh.com/btstack/#examples/examples/index.html) for a full description.
+
+By default, the Bluetooth examples are only built in one "mode" only (*background*, *poll*, or *freertos*), with the 
+default being *background*. This can be changed by passing `-DBTSTACK_EXAMPLE_TYPE=poll` etc. to `CMake`, or all 
+examples can be built (which may be slow) by passing `-DBTSTACK_EXAMPLE_TYPE=all`
+Freertos versions can only be built if `FREERTOS_KERNEL_PATH` is defined.
+
+App|Description
+---|---
+[picow_bt_example_a2dp_sink_demo](https://github.com/bluekitchen/btstack/tree/master/example/a2dp_sink_demo.c)|A2DP Sink - Receive Audio Stream and Control Playback.
+[picow_bt_example_a2dp_source_demo](https://github.com/bluekitchen/btstack/tree/master/example/a2dp_source_demo.c)|A2DP Source - Stream Audio and Control Volume.
+[picow_bt_example_ancs_client_demo](https://github.com/bluekitchen/btstack/tree/master/example/ancs_client_demo.c)|LE ANCS Client - Apple Notification Service.
+[picow_bt_example_att_delayed_response](https://github.com/bluekitchen/btstack/tree/master/example/att_delayed_response.c)|LE Peripheral - Delayed Response.
+[picow_bt_example_audio_duplex](https://github.com/bluekitchen/btstack/tree/master/example/audio_duplex.c)|Audio Driver - Forward Audio from Source to Sink.
+[picow_bt_example_avrcp_browsing_client](https://github.com/bluekitchen/btstack/tree/master/example/avrcp_browsing_client.c)|AVRCP Browsing - Browse Media Players and Media Information.
+[picow_bt_example_dut_mode_classic](https://github.com/bluekitchen/btstack/tree/master/example/dut_mode_classic.c)|Testing - Enable Device Under Test (DUT.c) Mode for Classic.
+[picow_bt_example_gap_dedicated_bonding](https://github.com/bluekitchen/btstack/tree/master/example/gap_dedicated_bonding.c)|GAP bonding
+[picow_bt_example_gap_inquiry](https://github.com/bluekitchen/btstack/tree/master/example/gap_inquiry.c)|GAP Classic Inquiry.
+[picow_bt_example_gap_le_advertisements](https://github.com/bluekitchen/btstack/tree/master/example/gap_le_advertisements.c)|GAP LE Advertisements Scanner.
+[picow_bt_example_gap_link_keys](https://github.com/bluekitchen/btstack/tree/master/example/gap_link_keys.c)|GAP Link Key Management (Classic.c).
+[picow_bt_example_gatt_battery_query](https://github.com/bluekitchen/btstack/tree/master/example/gatt_battery_query.c)|GATT Battery Service Client.
+[picow_bt_example_gatt_browser](https://github.com/bluekitchen/btstack/tree/master/example/gatt_browser.c)|GATT Client - Discover Primary Services.
+[picow_bt_example_gatt_counter](https://github.com/bluekitchen/btstack/tree/master/example/gatt_counter.c)|GATT Server - Heartbeat Counter over GATT.
+[picow_bt_example_gatt_device_information_query](https://github.com/bluekitchen/btstack/tree/master/example/gatt_device_information_query.c)|GATT Device Information Service Client.
+[picow_bt_example_gatt_heart_rate_client](https://github.com/bluekitchen/btstack/tree/master/example/gatt_heart_rate_client.c)|GATT Heart Rate Sensor Client.
+[picow_bt_example_gatt_streamer_server](https://github.com/bluekitchen/btstack/tree/master/example/gatt_streamer_server.c)|Performance - Stream Data over GATT (Server.c).
+[picow_bt_example_hfp_ag_demo](https://github.com/bluekitchen/btstack/tree/master/example/hfp_ag_demo.c)|HFP AG - Audio Gateway.
+[picow_bt_example_hfp_hf_demo](https://github.com/bluekitchen/btstack/tree/master/example/hfp_hf_demo.c)|HFP HF - Hands-Free.
+[picow_bt_example_hid_host_demo](https://github.com/bluekitchen/btstack/tree/master/example/hid_host_demo.c)|HID Host Classic.
+[picow_bt_example_hid_keyboard_demo](https://github.com/bluekitchen/btstack/tree/master/example/hid_keyboard_demo.c)|HID Keyboard Classic.
+[picow_bt_example_hid_mouse_demo](https://github.com/bluekitchen/btstack/tree/master/example/hid_mouse_demo.c)|HID Mouse Classic.
+[picow_bt_example_hog_boot_host_demo](https://github.com/bluekitchen/btstack/tree/master/example/hog_boot_host_demo.c)|HID Boot Host LE.
+[picow_bt_example_hog_host_demo](https://github.com/bluekitchen/btstack/tree/master/example/hog_host_demo.c)|HID Host LE.
+[picow_bt_example_hog_keyboard_demo](https://github.com/bluekitchen/btstack/tree/master/example/hog_keyboard_demo.c)|HID Keyboard LE.
+[picow_bt_example_hog_mouse_demo](https://github.com/bluekitchen/btstack/tree/master/example/hog_mouse_demo.c)|HID Mouse LE.
+[picow_bt_example_hsp_ag_demo](https://github.com/bluekitchen/btstack/tree/master/example/hsp_ag_demo.c)|HSP AG - Audio Gateway.
+[picow_bt_example_hsp_hs_demo](https://github.com/bluekitchen/btstack/tree/master/example/hsp_hs_demo.c)|HSP HS - Headset.
+[picow_bt_example_le_credit_based_flow_control_mode_client](https://github.com/bluekitchen/btstack/tree/master/example/le_credit_based_flow_control_mode_client.c)|LE Credit-Based Flow-Control Mode Client - Send Data over L2CAP.
+[picow_bt_example_le_credit_based_flow_control_mode_server](https://github.com/bluekitchen/btstack/tree/master/example/le_credit_based_flow_control_mode_server.c)|LE Credit-Based Flow-Control Mode Server - Receive data over L2CAP.
+[picow_bt_example_led_counter](https://github.com/bluekitchen/btstack/tree/master/example/led_counter.c)|Hello World - Blinking a LED without Bluetooth.
+[picow_bt_example_le_mitm](https://github.com/bluekitchen/btstack/tree/master/example/le_mitm.c)|LE Man-in-the-Middle Tool.
+[picow_bt_example_le_streamer_client](https://github.com/bluekitchen/btstack/tree/master/example/le_streamer_client.c)|Performance - Stream Data over GATT (Client.c).
+[picow_bt_example_mod_player](https://github.com/bluekitchen/btstack/tree/master/example/mod_player.c)|Audio Driver - Play 80's MOD Song.
+[picow_bt_example_nordic_spp_le_counter](https://github.com/bluekitchen/btstack/tree/master/example/nordic_spp_le_counter.c)|LE Nordic SPP-like Heartbeat Server.
+[picow_bt_example_nordic_spp_le_streamer](https://github.com/bluekitchen/btstack/tree/master/example/nordic_spp_le_streamer.c)|LE Nordic SPP-like Streamer Server.
+[picow_bt_example_sdp_general_query](https://github.com/bluekitchen/btstack/tree/master/example/sdp_general_query.c)|SDP Client - Query Remote SDP Records.
+[picow_bt_example_sdp_rfcomm_query](https://github.com/bluekitchen/btstack/tree/master/example/sdp_rfcomm_query.c)|SDP Client - Query RFCOMM SDP record.
+[picow_bt_example_sine_player](https://github.com/bluekitchen/btstack/tree/master/example/sine_player.c)|Audio Driver - Play Sine.
+[picow_bt_example_sm_pairing_central](https://github.com/bluekitchen/btstack/tree/master/example/sm_pairing_central.c)|LE Central - Test Pairing Methods.
+[picow_bt_example_sm_pairing_peripheral](https://github.com/bluekitchen/btstack/tree/master/example/sm_pairing_peripheral.c)|LE Peripheral - Test Pairing Methods.
+[picow_bt_example_spp_and_gatt_counter](https://github.com/bluekitchen/btstack/tree/master/example/spp_and_gatt_counter.c)|Dual Mode - SPP and LE Counter.
+[picow_bt_example_spp_and_gatt_streamer](https://github.com/bluekitchen/btstack/tree/master/example/spp_and_gatt_streamer.c)|Dual Mode - SPP and LE streamer.
+[picow_bt_example_spp_counter](https://github.com/bluekitchen/btstack/tree/master/example/spp_counter.c)|SPP Server - Heartbeat Counter over RFCOMM.
+[picow_bt_example_spp_flowcontrol](https://github.com/bluekitchen/btstack/tree/master/example/spp_flowcontrol.c)|SPP Server - RFCOMM Flow Control.
+[picow_bt_example_spp_streamer_client](https://github.com/bluekitchen/btstack/tree/master/example/spp_streamer_client.c)|Performance - Stream Data over SPP (Client.c).
+[picow_bt_example_spp_streamer](https://github.com/bluekitchen/btstack/tree/master/example/spp_streamer.c)|Performance - Stream Data over SPP (Server.c).
+[picow_bt_example_ublox_spp_le_counter](pico_w/bt/ublox_spp_le_counter.c)|LE u-blox SPP-like Heartbeat Server.
+
+Some Standalone Bluetooth examples (without all the common example build infrastructure) are also available:
+
+App|Description
+---|---
+[picow_ble_temp_sensor](pico_w/bt/standalone)|Reads from the on board temperature sensor and sends notifications via BLE
+[picow_ble_temp_sensor_with_wifi](pico_w/bt/standalone)|Same as above but also connects to Wi-Fi and starts an "iperf" server
+[picow_ble_temp_reader](pico_w/bt/standalone)|Connects to on of the above "sensors" and reads the temperature
 
 ### PIO
 
@@ -300,6 +384,17 @@ is built as `tinyusb_host_cdc_msc_hid`.
 At the time of writing, there is only one host example available:
 
 - tinyusb_host_cdc_msc_hid
+
+### USB Dual Mode
+
+USB Dual Mode uses PIO as a USB host controller and the RP2040 USB device controller as a device controller. All the USB dual examples come directly from the TinyUSB dual examples directory [here](https://github.com/hathach/tinyusb/tree/master/examples/dual).
+Those that are supported on RP2040 devices are automatically included as part of the pico-examples
+build as targets named `tinyusb_dual_<example_name>`, e.g. https://github.com/hathach/tinyusb/tree/master/examples/dual/host_hid_to_device_cdc
+is built as `tinyusb_dual_host_hid_to_device_cdc`.
+
+At the time of writing, there is only one dual example available:
+
+- tinyusb_dual_host_hid_to_device_cdc
 
 ### Watchdog
 
