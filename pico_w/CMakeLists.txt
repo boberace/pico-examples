@@ -22,16 +22,7 @@ if (PICO_CYW43_SUPPORTED) # set by PICO_BOARD=pico_w
         if (NOT TARGET pico_btstack_base)
             message("Skipping Pico W Bluetooth examples as support is not available")
         else()
-<<<<<<< HEAD
-            add_subdirectory(iperf)
-            add_subdirectory(ntp_client)
-            add_subdirectory(tcp_client)
-            add_subdirectory(tcp_server)
-            add_subdirectory(freertos)
-            add_subdirectory(web_server)
-=======
             add_subdirectory(bt)
->>>>>>> master
         endif()
     endif()
 endif()
