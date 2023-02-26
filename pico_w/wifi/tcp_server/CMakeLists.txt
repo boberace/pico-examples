@@ -15,6 +15,8 @@ target_link_libraries(picow_tcpip_server_background
         )
 
 pico_add_extra_outputs(picow_tcpip_server_background)
+pico_enable_stdio_usb(picow_tcpip_server_background 1)
+pico_enable_stdio_uart(picow_tcpip_server_background 0)
 
 add_executable(picow_tcpip_server_poll
         picow_tcp_server.c
@@ -32,3 +34,5 @@ target_link_libraries(picow_tcpip_server_poll
         pico_stdlib
         )
 pico_add_extra_outputs(picow_tcpip_server_poll)
+pico_enable_stdio_usb(picow_tcpip_server_poll 1)
+pico_enable_stdio_uart(picow_tcpip_server_poll 0)

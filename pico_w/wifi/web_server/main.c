@@ -5,21 +5,52 @@
 
 char ssid[] = WIFI_SSID;
 char pass[] = WIFI_PASSWORD;
+const char *ssitags[] = {"temp", "hum"};
 uint32_t country = CYW43_COUNTRY_USA;
 uint32_t auth = CYW43_AUTH_WPA2_MIXED_PSK;
-
-int http_setup(uint32_t country, const char *ssid, const char *pass,  uint32_t auth, const char *hostname, ip_addr_t *ip,  ip_addr_t *mask, ip_addr_t *gw);
-
-int main()  
+int counter = 0;
+u16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)  
 {  
-    stdio_init_all();
-    http_setup(country, ssid, pass, auth, "MyPicoW", NULL, NULL, NULL);
-    httpd_init();
-    while (true)  
-    {  
-        sleep_ms(500);
+    switch(iIndex)
+    {  counter++;
+        case 0:              
+            sprintf(pcInsert, "%d", counter);
+            // snprintf(pcInsert, iInsertLen, countstring);  
+            return strlen(pcInsert);
+            break;  
+        case 1:  
+            sprintf(pcInsert, "%d", counter);
+            // snprintf(pcInsert, iInsertLen, countstring);  
+            return strlen(pcInsert);
+            break; 
+        default :
+            break; 
     }  
 } 
+
+char name[30];
+
+const char *myCGIHandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+{
+    if (iIndex == 0)
+    {
+        for (int i=0; i<iNumParams; i++){
+            if (strcmp(pcParam[i], "fname") == 0)
+            {
+                  strcpy(name, pcValue[i]);
+            } 
+            else if (strcmp(pcParam[i], "lname") == 0)
+            {
+                strcat(name, " ");
+                strcat(name, pcValue[i]);
+            }
+        }
+    }
+    printf("%s\n", name);
+    return "/index.shtml";
+}
+
+const tCGI FORM_CGI = {"/form.cgi", myCGIHandler};
 
 int http_setup(uint32_t country, const char *ssid, const char *pass,  uint32_t auth, const char *hostname, ip_addr_t *ip,  ip_addr_t *mask, ip_addr_t *gw)  
 {  
@@ -78,4 +109,20 @@ int http_setup(uint32_t country, const char *ssid, const char *pass,  uint32_t a
         printf("Host Name: %s\n",  netif_get_hostname(netif_default));
     }  
     return status;
+} 
+
+int main()  
+{  
+    stdio_init_all();
+    http_setup(country, ssid, pass, auth, "MyPicoW", NULL, NULL, NULL);
+    http_set_ssi_handler(mySSIHandler, ssitags, 2);  
+    http_set_cgi_handlers(&FORM_CGI, 1);
+    httpd_init();
+    gpio_init(0);
+    gpio_set_dir(0, GPIO_OUT);
+    while (true)  
+    {  
+        gpio_put(0, !gpio_get(0));
+        sleep_ms(500);
+    }  
 } 
