@@ -1,9 +1,3 @@
-/**
- * Copyright (c) 2022 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
-
 #include <string.h>
 #include <stdlib.h>
 
@@ -14,12 +8,20 @@
 #include "lwip/tcp.h"
 
 #define TCP_PORT 4242
-#define DEBUG_printf printf
 #define BUF_SIZE 2048
 #define POLL_TIME_S 5
 
-uint32_t poll_counter = 0;
-bool restart_tcp_server = 0;
+#define DEBUG_MAIN printf 
+
+#ifdef DEBUG_MAIN
+  #define DEBUG_printf(x, ...) DEBUG_MAIN(x , ##__VA_ARGS__)
+#else
+  #define DEBUG_printf(x, ...)
+#endif
+
+uint8_t range_values[256] = {0};
+uint8_t select_values[256] = {0};
+bool toggle_values[256] = {false};
 
 typedef struct TCP_SERVER_T_ {
     struct tcp_pcb *server_pcb;
@@ -29,11 +31,12 @@ typedef struct TCP_SERVER_T_ {
     char buffer_recv[BUF_SIZE];
     int sent_len;
     int recv_len;
-    int run_count;
+    uint32_t poll_counter;
+    bool restart_tcp_server;
 } TCP_SERVER_T;
 
 static TCP_SERVER_T* tcp_server_init(void) {
-    TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
+    TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T)); // mem_calloc fails to allocate?
     if (!state) {
         DEBUG_printf("failed to allocate state\n");
         return NULL;
@@ -74,7 +77,7 @@ static err_t tcp_server_result(void *arg, int status) {
         DEBUG_printf("status not ok.  sending request to restart tcp server. %d\n", status);
         err_t etsc = tcp_server_close(arg);
         if(etsc == ERR_OK){
-            restart_tcp_server = true;
+            state->restart_tcp_server = true;
         } else {
             DEBUG_printf("could not restart tcp server. %d\n", etsc);
         }
@@ -109,9 +112,9 @@ err_t tcp_server_send_data(void *arg, struct tcp_pcb *tpcb)
     // this method is callback from lwIP, so cyw43_arch_lwip_begin is not required, however you
     // can use this method to cause an assertion in debug mode, if this method is called when
     // cyw43_arch_lwip_begin IS needed
-    cyw43_arch_lwip_check();
+    // cyw43_arch_lwip_check();
     err_t err = tcp_write(tpcb, state->buffer_sent, len_buffer_sent, TCP_WRITE_FLAG_COPY);
-    // memset(state->buffer_sent, 0, sizeof(state->buffer_sent));
+
     if (err != ERR_OK) {
         DEBUG_printf("Failed to write data %d\n", err);
         return tcp_server_result(arg, -1);
@@ -128,15 +131,15 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     // this method is callback from lwIP, so cyw43_arch_lwip_begin is not required, however you
     // can use this method to cause an assertion in debug mode, if this method is called when
     // cyw43_arch_lwip_begin IS needed
-    cyw43_arch_lwip_check();
+    // cyw43_arch_lwip_check();
     if (p->tot_len > 0) {
-        DEBUG_printf("tcp_server_recv %d/%d err %d\n", p->tot_len, state->recv_len, err);
+        DEBUG_printf("\n\ntcp_server_recv %d/%d err %d\n", p->tot_len, state->recv_len, err);
 
         // todo : buffer len check
 
         // Receive the buffer
+        memset(state->buffer_recv,0,sizeof(state->buffer_recv));
         state->recv_len = pbuf_copy_partial(p, state->buffer_recv, p->tot_len, 0);
-
         tcp_recved(tpcb, p->tot_len);
     }
     pbuf_free(p);
@@ -147,24 +150,87 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
         char *data_start = strstr(state->buffer_recv, "\r\n\r\n") + 4;
         // Print the POST data to the console
         DEBUG_printf("Received POST data: %s\n", data_start);
-        // Send back the data recieved to the client
+
+        char page, tp;
+        int num, val;
+
+        if (strncmp(data_start, "getvalue", 8) == 0) {
+
+            sscanf(data_start + 8, "%c%d%c", &page, &num, &tp);  
+        
+            switch(tp) {
+            
+            case 'r'  :
+                val = range_values[num];
+                break;
+                
+            case 's'  :
+                val = select_values[num];
+                break; 
+                
+            case 't'  :
+                val = toggle_values[num];
+                break; 
+        
+            default :
+                val = -1;
+                DEBUG_printf("handleGetValues bad value type %c\n", tp);
+                
+            }
+
+            DEBUG_printf("handleGetValues page = %c, num = %d, tp = %c, val = %d\n", page, num, tp, val);
+
+        } else if (strncmp(data_start, "setvalue", 8) == 0){
+
+            sscanf(data_start + 8, "%c%d%c%d", &page, &num, &tp, &val);  
+
+            switch(tp) {
+            
+            case 'r'  :
+                range_values[num] = val;
+                break;
+                
+            case 's'  :
+                select_values[num] = val;
+                break;
+                
+            case 't'  :
+                toggle_values[num] = val;
+                break; 
+
+            default :
+                DEBUG_printf("handleSetValues bad value type %c\n", tp);
+                
+            }
+            
+            DEBUG_printf("handleSetValues page = %c, num = %d, tp = %c, val = %d\n", page, num, tp, val);
+
+        } else {
+            DEBUG_printf(" recieved post other than setvalue or getvalue\n");
+        }
+
+        char  str_val[32];
+        sprintf(str_val, "%d", val);
+        DEBUG_printf("string val: %s\n",str_val);
+        // Send the value to the client
+ 
         snprintf(state->buffer_sent, sizeof(state->buffer_sent), 
             "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: \
             *\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\n\r\n%s", 
-            strlen(data_start), data_start);
-        
-        return tcp_server_send_data(arg, state->client_pcb);
+            strlen(str_val), str_val);
+        DEBUG_printf("%s\n",state->buffer_sent);
+        return tcp_server_send_data(arg, state->client_pcb);       
+
 
     } else {
         DEBUG_printf(" recieve TCP not HTTP POST");
     }
-
     return ERR_OK;
 }
 
 static err_t tcp_server_poll(void *arg, struct tcp_pcb *tpcb) {
-    poll_counter++;
-    DEBUG_printf("tcp_server_poll_fn: %d\n", poll_counter);
+    TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
+    DEBUG_printf("tcp_server_poll_fn: %d\n", ++state->poll_counter);
     // return tcp_server_result(arg, -1); // no response is an error?
     return ERR_OK;
 }
@@ -226,8 +292,8 @@ static bool tcp_server_open(void *arg) {
     return true;
 }
 
-void run_tcp_server_post(void) {
-    TCP_SERVER_T *state = tcp_server_init();
+void run_tcp_server_post(TCP_SERVER_T *state) {
+    state = tcp_server_init();
     if (!state) {
         return;
     }
@@ -272,13 +338,16 @@ int main() {
     } else {
         printf("Connected.\n");
     }
-    run_tcp_server_post();
+    TCP_SERVER_T *state;
+    run_tcp_server_post(state);
+    state->restart_tcp_server = false;
+    state->poll_counter = 0;
 
     while(1){
-        if(restart_tcp_server){
-            restart_tcp_server = 0;
+        if(state->restart_tcp_server){
+            state->restart_tcp_server = false;
             printf("request recieved to restart server.\n");
-            run_tcp_server_post();
+            run_tcp_server_post(state);
         }
     }
 
