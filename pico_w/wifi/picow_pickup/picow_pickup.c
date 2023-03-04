@@ -198,6 +198,10 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
                 toggle_values[num] = val;
                 break; 
 
+            case 'b'  :
+                // placeholder
+                break; 
+
             default :
                 DEBUG_printf("handleSetValues bad value type %c\n", tp);
                 
