@@ -9,7 +9,7 @@
 
 #define TCP_PORT 4242
 #define BUF_SIZE 2048
-#define POLL_TIME_S 5
+#define POLL_TIME_S 1
 
 #define DEBUG_MAIN printf 
 
@@ -19,9 +19,14 @@
   #define DEBUG_printf(x, ...)
 #endif
 
+const int LED_PIN_TEMP1 = 0;
+const int LED_PIN_TEMP2 = 15;
+
 uint8_t range_values[256] = {0};
 uint8_t select_values[256] = {0};
 bool toggle_values[256] = {false};
+
+
 
 typedef struct TCP_SERVER_T_ {
     struct tcp_pcb *server_pcb;
@@ -74,12 +79,13 @@ static err_t tcp_server_result(void *arg, int status) {
     if (status == 0) {
         DEBUG_printf("status ok\n");
     } else {
-        DEBUG_printf("status not ok.  sending request to restart tcp server. %d\n", status);
+        DEBUG_printf("status not ok.  closing server in effort to restart. %d\n", status);
         err_t etsc = tcp_server_close(arg);
         if(etsc == ERR_OK){
             state->restart_tcp_server = true;
+            DEBUG_printf("server closed. flagging request to restart tcp server. %d\n", status);
         } else {
-            DEBUG_printf("could not restart tcp server. %d\n", etsc);
+            DEBUG_printf("could not close server properly. must manually reboot picow  %d\n", etsc);
         }
 
     }
@@ -133,7 +139,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     // cyw43_arch_lwip_begin IS needed
     // cyw43_arch_lwip_check();
     if (p->tot_len > 0) {
-        DEBUG_printf("\n\ntcp_server_recv %d/%d err %d\n", p->tot_len, state->recv_len, err);
+        // DEBUG_printf("\n\ntcp_server_recv %d/%d err %d\n", p->tot_len, state->recv_len, err);
 
         // todo : buffer len check
 
@@ -149,7 +155,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
         // Find the start of the POST data
         char *data_start = strstr(state->buffer_recv, "\r\n\r\n") + 4;
         // Print the POST data to the console
-        DEBUG_printf("Received POST data: %s\n", data_start);
+        // DEBUG_printf("Received POST data: %s\n", data_start);
 
         char page, tp;
         int num, val;
@@ -222,7 +228,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
             "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: \
             *\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\n\r\n%s", 
             strlen(str_val), str_val);
-        DEBUG_printf("%s\n",state->buffer_sent);
+        // DEBUG_printf("%s\n",state->buffer_sent);
         return tcp_server_send_data(arg, state->client_pcb);       
 
 
@@ -235,6 +241,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
 static err_t tcp_server_poll(void *arg, struct tcp_pcb *tpcb) {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
     DEBUG_printf("tcp_server_poll_fn: %d\n", ++state->poll_counter);
+    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, !cyw43_arch_gpio_get(CYW43_WL_GPIO_LED_PIN));
     // return tcp_server_result(arg, -1); // no response is an error?
     return ERR_OK;
 }
@@ -311,15 +318,28 @@ void run_tcp_server_post(TCP_SERVER_T *state) {
 #if PICO_CYW43_ARCH_POLL
         // if you are using pico_cyw43_arch_poll, then you must poll periodically from your
         // main loop (not from a timer) to check for Wi-Fi driver or lwIP work that needs to be done.
+        gpio_put(LED_PIN_TEMP2, !gpio_get(LED_PIN_TEMP2));
         cyw43_arch_poll();
         // you can poll as often as you like, however if you have nothing else to do you can
         // choose to sleep until either a specified time, or cyw43_arch_poll() has work to do:
         cyw43_arch_wait_for_work_until(make_timeout_time_ms(1000));
+        if(state->restart_tcp_server){
+            state->restart_tcp_server = false;
+            printf("request recieved to restart server.\n");
+            run_tcp_server_post(state);
+        }
 #else
         // if you are not using pico_cyw43_arch_poll, then WiFI driver and lwIP work
         // is done via interrupt in the background. This sleep is just an example of some (blocking)
         // work you might be doing.
-        sleep_ms(1000);
+
+        gpio_put(LED_PIN_TEMP1, !gpio_get(LED_PIN_TEMP1));
+        sleep_ms(500);
+        if(state->restart_tcp_server){
+            state->restart_tcp_server = false;
+            printf("request recieved to restart server.\n");
+            run_tcp_server_post(state);
+        }
 #endif
     }
     free(state);
@@ -327,6 +347,11 @@ void run_tcp_server_post(TCP_SERVER_T *state) {
 
 int main() {
     stdio_init_all();
+
+    gpio_init(LED_PIN_TEMP1);
+    gpio_set_dir(LED_PIN_TEMP1, GPIO_OUT);
+    gpio_init(LED_PIN_TEMP2);
+    gpio_set_dir(LED_PIN_TEMP2, GPIO_OUT);
 
     if (cyw43_arch_init()) {
         printf("failed to initialise\n");
@@ -343,17 +368,10 @@ int main() {
         printf("Connected.\n");
     }
     TCP_SERVER_T *state;
-    run_tcp_server_post(state);
     state->restart_tcp_server = false;
     state->poll_counter = 0;
 
-    while(1){
-        if(state->restart_tcp_server){
-            state->restart_tcp_server = false;
-            printf("request recieved to restart server.\n");
-            run_tcp_server_post(state);
-        }
-    }
+    run_tcp_server_post(state);
 
     cyw43_arch_deinit();
     return 0;
