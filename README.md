@@ -25,6 +25,12 @@ App|Description
 [dma_capture](adc/dma_capture) | Use the DMA to capture many samples from the ADC.
 [read_vsys](adc/read_vsys) | Demonstrates how to read VSYS to get the voltage of the power supply.
 
+### Charlieplex
+
+App|Description
+---|---
+[charlieplex](charlieplex)| Demonstration of Charliplexing LEDs(Tri-State Multiplexing of LEDs)
+
 ### Clocks
 
 App|Description
