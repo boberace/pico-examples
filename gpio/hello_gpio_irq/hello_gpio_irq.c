@@ -41,8 +41,6 @@ int main() {
         printf("Hello GPIO IRQ\n");
         sleep_ms(1000);
     }
-
-    return 0;
 }
 
 

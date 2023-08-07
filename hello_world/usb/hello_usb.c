@@ -13,5 +13,4 @@ int main() {
         printf("Hello, world again!\n");
         sleep_ms(1000);
     }
-    return 0;
 }

@@ -50,6 +50,4 @@ int main() {
         printf("%.2f\n", adc_raw * ADC_CONVERT);        
         sleep_ms(1);
     }
-
-    return 0;
 }
