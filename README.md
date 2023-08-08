@@ -31,7 +31,7 @@ App|Description
 ---|---
 [charlieplex](charlieplex)| Demonstration of Charliplexing LEDs(Tri-State Multiplexing of LEDs)
 
-### Charlieplex
+### Cindex
 
 App|Description
 ---|---
