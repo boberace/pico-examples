@@ -31,6 +31,12 @@ App|Description
 ---|---
 [charlieplex](charlieplex)| Demonstration of Charliplexing LEDs(Tri-State Multiplexing of LEDs)
 
+### Charlieplex
+
+App|Description
+---|---
+[cindex](cindex)| Circular index class. Bottom of zero and top is user set.  Overloads ++, --, +=, -=, and =
+
 ### Clocks
 
 App|Description

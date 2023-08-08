@@ -36,6 +36,7 @@ endif()
 # Hardware-specific examples in subdirectories:
 add_subdirectory(adc)
 add_subdirectory(charlieplex)
+add_subdirectory(cindex)
 add_subdirectory(clocks)
 add_subdirectory(cmake)
 add_subdirectory(divider)
