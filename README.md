@@ -91,21 +91,23 @@ App|Description
 
 App|Description
 ---|---
-[bus_scan](i2c/bus_scan) | Scan the I2C bus for devices and display results.
+[ad5593r_i2c](i2c/ad5593r_i2c) | 8-Channel, 12-Bit, Configurable ADC/DAC with On-Chip Reference.
 [bmp280_i2c](i2c/bmp280_i2c) | Read and convert temperature and pressure data from a BMP280 sensor, attached to an I2C bus.
 [bno055_i2c](i2c/bno055_i2c) | BNO055 accelerometer/gyro/magnetometer, attached to an I2C bus.
 [bno085_i2c](i2c/bno055_i2c) | BNO085 accelerometer/gyro/magnetometer, attached to an I2C bus.
+[bus_scan](i2c/bus_scan) | Scan the I2C bus for devices and display results.
+[ht16k33_i2c](i2c/ht16k33_i2c) | Drive a 4 digit 14 segment LED with an HT16K33.
 [lcd_1602_i2c](i2c/lcd_1602_i2c) | Display some text on a generic 16x2 character LCD display, via I2C.
 [lis3dh_i2c](i2c/lis3dh_i2c) | Read acceleration and temperature value from a LIS3DH sensor via I2C
 [mcp9808_i2c](i2c/mcp9808_i2c) | Read temperature, set limits and raise alerts when limits are surpassed.
 [mma8451_i2c](i2c/mma8451_i2c) | Read acceleration from a MMA8451 accelerometer and set range and precision for the data.
 [mpl3115a2_i2c](i2c/mpl3115a2_i2c) | Interface with an MPL3115A2 altimeter, exploring interrupts and advanced board features, via I2C.
 [mpu6050_i2c](i2c/mpu6050_i2c) | Read acceleration and angular rate values from a MPU6050 accelerometer/gyro, attached to an I2C bus.
-[ssd1306_i2c](i2c/ssd1306_i2c) | Convert and display a bitmap on a 128x32 or 128x64 SSD1306-driven OLED display
 [pa1010d_i2c](i2c/pa1010d_i2c) | Read GPS location data, parse and display data via I2C.
+[pca9685emu_i2c](i2c/pca9685emu_i2c) | pca9685 emulator - receives commands over I2C.
 [pcf8523_i2c](i2c/pcf8523_i2c) | Read time and date values from a real time clock. Set current time and alarms on it.
-[ht16k33_i2c](i2c/ht16k33_i2c) | Drive a 4 digit 14 segment LED with an HT16K33.
 [slave_mem_i2c](i2c/slave_mem_i2c) | i2c slave example where the slave implements a 256 byte memory
+[ssd1306_i2c](i2c/ssd1306_i2c) | Convert and display a bitmap on a 128x32 or 128x64 SSD1306-driven OLED display
 
 ### Interpolator
 

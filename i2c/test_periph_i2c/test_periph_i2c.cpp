@@ -55,7 +55,6 @@ static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
     default:
         break;
     }
-    itrig = 1;
 }
 
 static void setup_slave() {
