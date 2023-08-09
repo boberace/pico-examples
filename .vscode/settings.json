@@ -1,6 +1,8 @@
 {
     "files.associations": {
+        "*.cps": "javascript",
         "vector": "cpp",
-        "test.pio.h": "c"
+        "test.pio.h": "c",
+        "cindex.h": "c"
     }
 }

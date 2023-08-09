@@ -6,7 +6,7 @@
 
 #include "pico/stdlib.h"
 
-#define LED_16_ARRAY
+// #define LED_16_ARRAY
 
 int main() {
 #ifndef LED_16_ARRAY

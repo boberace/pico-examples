@@ -8,3 +8,6 @@ target_link_libraries(slave_mem_i2c
     )
 pico_add_extra_outputs(slave_mem_i2c)
 example_auto_set_url(slave_mem_i2c)
+
+pico_enable_stdio_usb(slave_mem_i2c 1)
+pico_enable_stdio_uart(slave_mem_i2c 0)
