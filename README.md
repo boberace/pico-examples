@@ -108,7 +108,7 @@ App|Description
 [pcf8523_i2c](i2c/pcf8523_i2c) | Read time and date values from a real time clock. Set current time and alarms on it.
 [slave_mem_i2c](i2c/slave_mem_i2c) | i2c slave example where the slave implements a 256 byte memory
 [ssd1306_i2c](i2c/ssd1306_i2c) | Convert and display a bitmap on a 128x32 or 128x64 SSD1306-driven OLED display
-
+[test_periph_i2c](i2c/test_periph_i2c) | similar as slave_mem_i2c but without master - for connecting to external I2C buse
 ### Interpolator
 
 App|Description

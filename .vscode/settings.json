@@ -3,6 +3,7 @@
         "*.cps": "javascript",
         "vector": "cpp",
         "test.pio.h": "c",
-        "cindex.h": "c"
+        "cindex.h": "c",
+        "string_view": "cpp"
     }
 }
