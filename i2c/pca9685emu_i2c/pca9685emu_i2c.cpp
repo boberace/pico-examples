@@ -88,7 +88,6 @@ static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
 
             } else {
                 pca.mem[pca.mem_address] = i2c_read_byte_raw(i2c);
-                pca.mem_address++; // Handle auto-increment if enabled
 
                 switch (pca.mem_address) {
                     case PCA9685_MODE1:
@@ -97,14 +96,44 @@ static void i2c_slave_handler(i2c_inst_t *i2c, i2c_slave_event_t event) {
                     case PCA9685_MODE2:
 
                         break;                    
+                    case PCA9685_SUBADR1:
+
+                        break;
+                    case PCA9685_SUBADR2:
+
+                        break; 
+                    case PCA9685_SUBADR3:
+
+                        break;            
+                    case PCA9685_ALLCALLADR:
+
+                        break;     
                     case PCA9685_PRESCALE:
 
                         break;
-                    default:
+                    case PCA9685_TESTMODE:
+
+                        break;
+                    default: // led bytes
+                        uint lad = pca.mem_address; // led address
+                        uint ladofs = lad - 6; // led address offsetted
+                        if(ladofs % 4 == 3){ // at last of four bytes ( high byte of on)
+                            uint lon = pca.mem[lad-3] + (pca.mem[lad-2] << 8);
+                            uint loff = pca.mem[lad-1] + (pca.mem[lad-0] << 8);
+                            uint ldel = loff - lon;
+                            uint led = ladofs >> 2;                            
+                            uint PWM_PIN = PWM_PINS[led];
+                            uint slice_num = pwm_gpio_to_slice_num(PWM_PIN);  
+                            uint level = (lon > 4095)?  0 : ldel; // if lon is greater than 4095 then turn off
+                            pwm_set_chan_level(slice_num, pwm_gpio_to_channel(PWM_PIN), level);
+                        }
 
                         break;                   
 
                 }
+
+                pca.mem_address++; // auto-increment always enabled
+
             }
             break;
         case I2C_SLAVE_REQUEST: // master is requesting data
