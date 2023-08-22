@@ -5,15 +5,16 @@
  */
 
 #include "pico/stdlib.h"
-
+#include <stdio.h>
 // #define LED_16_ARRAY
 
 int main() {
+    stdio_init_all();
 #ifndef LED_16_ARRAY
     // #ifndef PICO_DEFAULT_LED_PIN
     // #warning blink example requires a board with a regulareb LED
     // #else
-        const uint LED_PIN = 25;
+        const uint LED_PIN = 15;
         gpio_init(LED_PIN);
         gpio_set_dir(LED_PIN, GPIO_OUT);
         while (true) {
@@ -25,6 +26,8 @@ int main() {
             sleep_ms(100);
             gpio_put(LED_PIN, 0);
             sleep_ms(700);
+
+            printf("blink %i\n",time_us_32());
         }
     // #endif
 #else

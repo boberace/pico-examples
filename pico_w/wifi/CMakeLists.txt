@@ -19,7 +19,6 @@ else()
     add_subdirectory(udp_beacon)
     add_subdirectory(web_server) 
     add_subdirectory(picow_pickup)
-
     if (NOT PICO_MBEDTLS_PATH)
         message("Skipping tls examples as PICO_MBEDTLS_PATH is not defined")
     else()
