@@ -151,15 +151,16 @@ class kxtj3_i2c{
     int set_wake_data_rate(KXTJ3_wake_data_rate_t wake_data_rate);
 
     // CTRL_REG1
-    int set_operating_mode(bool operating_mode);
+    int enter_standby_mode();
+    int enter_normal_mode();
     int set_resolution(bool high_res_mode);
-    int set_interrupt(bool interrupt);
+    int set_interrupt(bool accel_interrupt);
     int set_accel_range(KXTJ3_accel_range_t accel_range);
     int set_wake_up(bool wake_up);
 
     // CTRL_REG2
-    int set_software_reset(bool software_reset);
-    int set_self_test(bool self_test);
+    int initiate_software_reset();
+    int initiate_digital_self_test();
     int set_wake_up_data_rate(KXTJ3_wake_data_rate_t wake_data_rate);
 
     // INT_CTRL_REG1
@@ -181,20 +182,16 @@ class kxtj3_i2c{
     int set_na_counter(uint8_t na_counter);
 
     // SELF_TEST
-    int set_self_test_enable(bool self_test_enable);
+    int initiate_analog_self_test();
 
     // WAKEUP_THRESHOLD
     int set_wakeup_threshold(uint16_t wakeup_threshold);
 
-
-
-
     private:
 
     i2c_inst_t *_I2C_INST_KXTJ3;
-    uint8_t _KXTJ3_I2C_ADDR, _PIN_KXTJ3_RST, _PIN_KXTJ3_INT, _high_res_mode, _wake_up_mode;
-    KXTJ3_data_rate_t _data_rate;
-    KXTJ3_accel_range_t _accel_range;
+    uint8_t _KXTJ3_I2C_ADDR, _PIN_KXTJ3_RST, _PIN_KXTJ3_INT;
+    uint8_t _accel_range_mask = 0b000111000;
 
 
     int _read_regs(uint8_t addr, uint8_t *regs, uint8_t qty );
@@ -202,7 +199,8 @@ class kxtj3_i2c{
     int _write_regs_with_clear(uint8_t addr, uint8_t regs, uint8_t qty );
     int _write_masked_reg(uint8_t addr, uint8_t mask, bool set);
 
-    void _debug_print_write_regs();
+    void _debug_print_reg_binary(uint8_t reg);
+    void _debug_print_writable_regs();
 };
 
 
