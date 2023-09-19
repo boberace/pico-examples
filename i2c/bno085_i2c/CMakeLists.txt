@@ -11,8 +11,8 @@ target_sources(bno085_i2c PRIVATE
 
 target_link_libraries(bno085_i2c PRIVATE
         pico_stdlib
-        pico_multicore
         hardware_i2c
+        pico_multicore
         hardware_adc
         hardware_pwm
         hardware_irq

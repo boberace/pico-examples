@@ -25,8 +25,8 @@
 #include "pico/binary_info.h"
 #include "hardware/i2c.h"
 
-#define I2C_SDA_PIN 26 //  26 //
-#define I2C_SCL_PIN 27 //  27 //
+#define I2C_SDA_PIN 18 //  26 //
+#define I2C_SCL_PIN 19 //  27 //
 #define I2C i2c1 // depends on pin selection for either zero or one
 
 // I2C reserves some addresses for special purposes. We exclude these from the scan.
@@ -64,8 +64,8 @@ int main() {
         if (reserved_addr(addr))
             ret = PICO_ERROR_GENERIC;
         else
-            // ret = i2c_read_blocking(i2c_default, addr, &rxdata, 1, false);
-            ret = i2c_read_timeout_us(i2c_default, addr, &rxdata, 1, false, 1000);
+            // ret = i2c_read_blocking(I2C, addr, &rxdata, 1, false);
+            ret = i2c_read_timeout_us(I2C, addr, &rxdata, 1, false, 1000);
 
         printf(ret < 0 ? "." : "@");
         printf(addr % 16 == 15 ? "\n" : "  ");
