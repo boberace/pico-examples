@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>A Meaningful Page Title</title>
+</head>
+<body>
+
+<h1>The button Element</h1>
+
+<button type="button" id="awesomeButton">Click Me!</button>
+
+
+<h1>Custom Range Slider</h1>
+<p>Drag a slider to display the current value and send to the microcontroller.</p>
+
+<div class="slidecontainer" id="container1">
+  
+  <input id="rangeValue1" type="range" min=0 max=100 class="slider" step=10 >
+  <label for="rangeValue1">_</label><br>
+
+  <input id="rangeValue2" type="range" min=0 max=100 class="slider" step=10 >
+  <label for="rangeValue2">_</label><br>
+
+  <input id="rangeValue3" type="range" min=0 max=100 class="slider" step=10 >
+  <label for="rangeValue3">_</label><br>
+  
+  <input type="radio" name="radioContainer1" id="enabled1" value=1 >
+  <label for="enabled1">enabled</label><br>
+  <input type="radio" name="radioContainer1" id="disabled1" value=0 >
+  <label for="disabled1">disabled</label><br>
+
+</div>
+
+<br>
+
+<div class="slidecontainer" id="container2">
+
+  <input id="rangeValue4" type="range" min=0 max=100 class="slider" step=10 >
+  <label for="rangeValue4">_</label><br>
+
+  <input id="rangeValue5" type="range" min=0 max=100 class="slider" step=10 >
+  <label for="rangeValue5">_</label><br>
+
+  <input id="rangeValue6" type="range" min=0 max=100 class="slider" step=10 >
+  <label for="rangeValue6">_</label><br>
+  
+  <label class="switch" for="checkboxContainer2"> 
+    <input type="checkbox" id="checkboxContainer2" >
+  </label>
+  
+</div>
+
+<script>
+
+var button = document.getElementById("awesomeButton");
+var url = "http://192.168.0.188"
+
+button.addEventListener("click", function() {
+  // create a new HTTP request object
+  var xhr = new XMLHttpRequest();
+
+  // configure the request
+  xhr.open("POST", url + "/toggle-led", true);
+  xhr.setRequestHeader("Content-Type", "text/plain");
+
+  // send the request with JSON data
+  xhr.send("99");
+
+  // handle the response
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4 && xhr.status === 200) {
+      console.log(xhr.responseText);
+    }
+  };
+});
+
+</script>
+ 
+</body>
+</html>

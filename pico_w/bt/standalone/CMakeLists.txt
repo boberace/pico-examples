@@ -18,6 +18,9 @@ pico_btstack_make_gatt_header(picow_ble_temp_sensor PRIVATE "${CMAKE_CURRENT_LIS
 pico_add_extra_outputs(picow_ble_temp_sensor)
 example_auto_set_url(picow_ble_temp_sensor)
 
+pico_enable_stdio_usb(picow_ble_temp_sensor 1)
+pico_enable_stdio_uart(picow_ble_temp_sensor 0)
+
 # Standalone example that connects to picow_ble_temp_sensor and reads the temperature 
 # Flahes once quickly each second when it's running but not connected to another device
 # Flashes twice quickly each second when connected to another device and reading it's temperature
@@ -40,6 +43,9 @@ target_compile_definitions(picow_ble_temp_reader PRIVATE
 
 pico_add_extra_outputs(picow_ble_temp_reader)
 example_auto_set_url(picow_ble_temp_reader)
+
+pico_enable_stdio_usb(picow_ble_temp_reader 1)
+pico_enable_stdio_uart(picow_ble_temp_reader 0)
 
 if (WIFI_SSID AND WIFI_PASSWORD)
     # Another version of the sensor example, but this time also runs iperf over wifi

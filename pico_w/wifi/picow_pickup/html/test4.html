@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+</style>
+</head>
+<body>
+  <!-- Treat each div as its own container and regardless of id name, number them increasingly.
+  This the same for all input elements. -->
+  <h1>The button Element</h1>
+
+  <input type="button" id="button1" value="Click Me1!">
+  <input type="button" id="button2" value="Click Me2!">
+  <input type="button" id="button3" value="Click Me3!">
+
+  <h1>Custom Range Slider</h1>
+  <p>Drag a slider to display the current value and send to the microcontroller.</p>
+  
+  <div id="container1">
+    container1 <br>
+    <input id="rangeValue1" type="range" min=0 max=100  step=10 >
+    <label for="rangeValue1">_</label><br>
+    
+    <input id="rangeValue2" type="range" min=0 max=100  step=10 >
+    <label for="rangeValue2">_</label><br>
+  
+    <input id="rangeValue3" type="range" min=0 max=100  step=10 >
+    <label for="rangeValue3">_</label><br>
+    
+    <input type="radio" name="radioContainer1" id="enabled1" value=1 >
+    <label for="enabled1">enabled</label><br>
+    <input type="radio" name="radioContainer1" id="disabled1" value=0 >
+    <label for="disabled1">disabled</label><br>
+    <input type="radio" name="radioContainer1" id="locked1" value=0 >
+    <label for="locked1">locked</label><br>
+  
+  </div>
+  
+  <br>
+  
+  <div id="container2">
+    container2 <br>
+    <input id="rangeValue4" type="range" min=0 max=100  step=10 >
+    <label for="rangeValue4">_</label><br>
+  
+    <input id="rangeValue5" type="range" min=0 max=100  step=10 >
+    <label for="rangeValue5">_</label><br>
+  
+    <input id="rangeValue6" type="range" min=0 max=100  step=10 >
+    <label for="rangeValue6">_</label><br> 
+
+    <input type="checkbox" id="checkboxContainer2" >
+    <label for="checkboxContainer2"> 
+    
+    </label>
+    
+  </div>
+
+<script>
+
+  const url = "http://192.168.0.188"
+  const serverPort = 4242
+  const pageChar = 'a' // make unique for each page
+
+  document.addEventListener("DOMContentLoaded", function() {
+    initValues();
+  });
+
+  function getElementIdNumber(element){
+    return parseInt(element.id.match(/\d+/)[0])
+  }
+
+  function getElementIdName(element){
+    return element.id.match(/[a-zA-Z]+/)[0]
+  }
+
+  function getElementNameNumber(element){
+    return parseInt(element.name.match(/\d+/)[0])
+  }
+
+  function getElementNameName(element){
+    return element.name.match(/[a-zA-Z]+/)[0]
+  }
+
+  async function handleRange(event){
+    const inputElement = event.target;
+    // should I do this now or after get response from the microcontroller when setting value?
+    inputElement.parentElement.querySelector("label[for='" + inputElement.id + "']").innerHTML = inputElement.value;    
+    const value = await setValue(getElementIdNumber(inputElement), 'r', inputElement.value);
+    if(value != inputElement.value){
+      console.log("handleRange sent value: ",inputElement.value, " but returned value: ", value);
+    }    
+  }
+
+  async function handleCheckbox(event){
+    const inputElement = event.target;
+    var elementValue = 0;
+      if (inputElement.checked == true){
+        elementValue = 1;
+      }      
+    enablesForCheckbox(inputElement)
+    const value = await setValue(getElementIdNumber(inputElement), 't', elementValue);
+    if(value != elementValue){
+      console.log("handleRange sent value: ", elementValue, " but returned value: ", value);
+    }  
+  }
+
+  async function handleRadio(event){
+    const inputElement = event.target;
+    const inputidName = getElementIdName(inputElement);
+    var elementValue = 0;
+    if(inputidName == "enabled" || inputidName == "disabled" || inputidName == "locked"){
+      if (inputElement.checked == true){
+        if(inputidName == "locked"){
+          elementValue = 1;
+        } else if (inputidName == "enabled"){
+          elementValue = 2;        
+        }
+      }   
+      enablesForRadio(inputElement)
+      const value = await setValue(getElementIdNumber(inputElement), 's', elementValue);     
+      if(value != elementValue){
+        console.log("handleRange sent value: ", elementValue, " but returned value: ", value);
+      } 
+    } else {
+      console.log("unknown radio")
+    }
+  }
+
+  async function handleButton(event){
+    const inputElement = event.target;
+    const tempValue = 1;
+    console.log(inputElement.id, "pressed");
+    const value = await setValue(getElementIdNumber(inputElement), 'b', tempValue);
+    if(value != tempValue){
+        console.log("handleRange sent value: ", tempValue, " but returned value: ", value);
+      } 
+  } 
+
+  function enablesForRadio(radioInput){
+    var disable = false;
+    var idName = getElementIdName(radioInput);
+    if(idName == "disabled" || idName == "locked"){
+      disable = true;
+    }
+    radioInput.parentElement.querySelectorAll('input[type="range"]').forEach(e => e.disabled = disable);
+  }
+
+  function enablesForCheckbox(checkboxInput){
+    var disable = !checkboxInput.checked
+    checkboxInput.parentElement.querySelectorAll('input[type="range"]').forEach(e => e.disabled = disable);
+  }
+
+  async function initValues(){
+      const inputElements = document.querySelectorAll('input');
+
+      // get the values of the inputs from the microcontroller
+      for (var i = 0; i < inputElements.length; i++) {
+
+        const inputElement = inputElements[i];
+        const inputidName = getElementIdName(inputElement);
+        const inputidNumber = getElementIdNumber(inputElement);
+
+        switch(inputElement.type) {
+          case "range":
+            try {
+              const valuer = await getValue(inputidNumber, 'r');
+              inputElement.value = valuer;
+              const rangeLabel = inputElement.parentElement.querySelector("label[for='" + inputElement.id + "']");       
+              rangeLabel.innerHTML = valuer;
+            } catch (error) {
+              console.error(error);
+            }
+            break;
+          case "radio":
+            const name = getElementNameName(inputElement);
+              if(name == "radioContainer"){
+                if(inputidName == "enabled" || inputidName == "disabled" || inputidName == "locked"){
+                  if(inputidName == "disabled"){ // only need to check one for radio set
+                      try {
+                        const values = await getValue(inputidNumber, 's');
+                        var radioInput;
+                        if (values == 0){
+                          radioInput = document.getElementById("disabled" + inputidNumber);
+                          radioInput.checked = 1;
+                        } else if (values == 1){
+                          radioInput = document.getElementById("locked" + inputidNumber);
+                          radioInput.checked = 1;
+                        } else if (values == 2){
+                          radioInput = document.getElementById("enabled" + inputidNumber);
+                          radioInput.checked = 1;
+                        } else {
+                          console.log("unknown radio number: " + values);
+                        }
+                        enablesForRadio(radioInput);
+                      } catch (error) {
+                        console.error(error);
+                      }
+                  }
+                }  else {
+                  console.log(" *** unknown radio inputidName : " + inputidName);
+                }
+              }
+            break;
+          case "checkbox":
+            try {
+              const valuet = await getValue(inputidNumber, 't');
+              inputElement.checked = valuet == 1;
+              enablesForCheckbox(inputElement);
+            } catch (error) {
+              console.error(error);
+            }
+            break;          
+          case "button":
+            //button is mometary without memory, this just prevents unknown input
+            break;  
+          default:
+            console.log(" *** unknown input: " + inputElement);
+        }
+      }
+      // add event handlers to the inputs
+      document.querySelectorAll('input[type="range"]').forEach(e => e.addEventListener("change", handleRange));
+      document.querySelectorAll('input[type="radio"]').forEach(e => e.addEventListener("change", handleRadio));
+      document.querySelectorAll('input[type="checkbox"]').forEach(e => e.addEventListener("change", handleCheckbox));
+      document.querySelectorAll('input[type="button"]').forEach(e => e.addEventListener("click", handleButton));
+ 
+  }
+
+  function getValue(elementNumber, elementTypeAbbr) {
+    return new Promise(function(resolve, reject) {
+      const xhr = new XMLHttpRequest();
+      const arrayNumber = elementNumber - 1;
+      xhr.open("POST", url + ":" + serverPort);
+      xhr.setRequestHeader("Content-Type", "text/plain");
+
+      xhr.onload = function() {
+        console.log("getvalue recieved: ", pageChar, elementNumber, elementTypeAbbr, xhr.responseText);
+        if (xhr.status == 200) {
+          resolve(xhr.responseText);
+        } else {
+          reject(xhr.statusText);
+        }
+      };
+
+      console.log("getvalue sent: ", pageChar, elementNumber, elementTypeAbbr);
+      xhr.send("getvalue" + pageChar + arrayNumber + elementTypeAbbr);
+    });
+  }
+
+  function setValue(elementNumber, elementTypeAbbr, elementValue) {
+    return new Promise(function(resolve, reject) {
+      const xhr = new XMLHttpRequest();
+      const arrayNumber = elementNumber - 1;
+      xhr.open("POST", url + ":" + serverPort);
+      xhr.setRequestHeader("Content-Type", "text/plain");
+
+      xhr.onload = function() {
+        if (xhr.status == 200) {
+          resolve(xhr.responseText);
+        } else {
+          reject(xhr.statusText);
+        }
+      };
+
+      console.log("setvalue sent: ", pageChar, elementNumber, elementTypeAbbr, elementValue);
+      xhr.send("setvalue" + pageChar + arrayNumber + elementTypeAbbr + elementValue);
+    });
+  }
+
+
+</script>
+
+</body>
+</html>
