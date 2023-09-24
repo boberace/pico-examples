@@ -27,8 +27,8 @@
  *
  */
 
-#ifndef MDNS_EXAMPLE_H
-#define MDNS_EXAMPLE_H
+#ifndef MDNS_PICOW_H
+#define MDNS_PICOW_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,4 +40,4 @@ void mdns_picow_init(void);
 }
 #endif
 
-#endif /* MDNS_EXAMPLE_H */
+#endif /* MDNS_PICOW_H */
