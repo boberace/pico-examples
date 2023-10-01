@@ -4,7 +4,12 @@ target_sources(ad5593r_i2c PRIVATE
         main.c
         ad5592r-base.c
         ad5593r.c
+        ad5593r_pico.c
+        pico_i2c.c
         no_os_i2c.c
+        no_os_util.c
+        no_os_mutex.c
+        no_os_alloc.c
         )
 
 target_link_libraries(ad5593r_i2c PRIVATE

@@ -1,9 +1,9 @@
 /***************************************************************************//**
- *   @file   no_os_delay.h
- *   @brief  Header file of Delay functions
- *   @author DBogdan (dragos.bogdan@analog.com)
+ *   @file   pico/pico_i2c.h
+ *   @brief  Header file for the pico i2c driver.
+ *   @author RBolboac (ramona.bolboaca@analog.com)
 ********************************************************************************
- * Copyright 2019(c) Analog Devices, Inc.
+ * Copyright 2022(c) Analog Devices, Inc.
  *
  * All rights reserved.
  *
@@ -36,35 +36,82 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
-
-#ifndef _NO_OS_DELAY_H_
-#define _NO_OS_DELAY_H_
+#ifndef _PICO_I2C_H_
+#define _PICO_I2C_H_
 
 /******************************************************************************/
 /***************************** Include Files **********************************/
 /******************************************************************************/
 
-#include <stdint.h>
+#include "no_os_i2c.h"
+#include "hardware/i2c.h"
+
+/******************************************************************************/
+/*************************** Types Declarations *******************************/
+/******************************************************************************/
 
 /**
- * @struct no_os_time
- * @brief Structure holding time data (seconds, microseconds).
+ * @struct pico_i2c_desc
+ * @brief pico platform specific I2C descriptor
  */
-struct no_os_time {
-	unsigned int s, us;
+struct pico_i2c_desc {
+	/** I2C instance */
+	i2c_inst_t *i2c_instance;
 };
 
-/******************************************************************************/
-/************************ Functions Declarations ******************************/
-/******************************************************************************/
+/**
+ * @brief Available GP config for I2c SDA
+ */
+enum i2c_sda_gp {
+	/* I2C0 available configurations */
+	I2C0_SDA_GP0 = 0,
+	I2C0_SDA_GP4 = 4,
+	I2C0_SDA_GP8 = 8,
+	I2C0_SDA_GP12 = 12,
+	I2C0_SDA_GP16 = 16,
+	I2C0_SDA_GP20 = 20,
+	/* I2C1 available configurations */
+	I2C1_SDA_GP2 = 2,
+	I2C1_SDA_GP6 = 6,
+	I2C1_SDA_GP10 = 10,
+	I2C1_SDA_GP14 = 14,
+	I2C1_SDA_GP18 = 18,
+	I2C1_SDA_GP26 = 26
+};
 
-/* Generate microseconds delay. */
-void no_os_udelay(uint32_t usecs);
+/**
+ * @brief Available GP config for I2C SCL
+ */
+enum i2c_scl_gp {
+	/* I2C0 available configurations */
+	I2C0_SCL_GP1 = 1,
+	I2C0_SCL_GP5 = 5,
+	I2C0_SCL_GP9 = 9,
+	I2C0_SCL_GP13 = 13,
+	I2C0_SCL_GP17 = 17,
+	I2C0_SCL_GP21 = 21,
+	/* I2C1 available configurations */
+	I2C1_SCL_GP3 = 3,
+	I2C1_SCL_GP7 = 7,
+	I2C1_SCL_GP11 = 11,
+	I2C1_SCL_GP15 = 15,
+	I2C1_SCL_GP19 = 19,
+	I2C1_SCL_GP27 = 27
+};
 
-/* Generate miliseconds delay. */
-void no_os_mdelay(uint32_t msecs);
+/**
+ * @brief Additional I2C config parameters
+ */
+struct pico_i2c_init_param {
+	/** I2C SDA pin configuration */
+	enum i2c_sda_gp i2c_sda_pin;
+	/** I2C SCL pin configuration */
+	enum i2c_scl_gp i2c_scl_pin;
+};
 
-/* Get current time */
-struct no_os_time no_os_get_time(void);
+/**
+ * @brief pico specific I2C platform ops structure
+ */
+extern const struct no_os_i2c_platform_ops pico_i2c_ops;
 
-#endif // _NO_OS_DELAY_H_
+#endif

@@ -1,9 +1,9 @@
-/***************************************************************************//**
- *   @file   no_os_delay.h
- *   @brief  Header file of Delay functions
- *   @author DBogdan (dragos.bogdan@analog.com)
+/*******************************************************************************
+ *   @file   util/no_os_alloc.c
+ *   @brief  Implementation of no-OS memory allocation functions.
+ *   @author GMois (george.mois@analog.com)
 ********************************************************************************
- * Copyright 2019(c) Analog Devices, Inc.
+ * Copyright 2023(c) Analog Devices, Inc.
  *
  * All rights reserved.
  *
@@ -37,34 +37,37 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
 
-#ifndef _NO_OS_DELAY_H_
-#define _NO_OS_DELAY_H_
-
-/******************************************************************************/
-/***************************** Include Files **********************************/
-/******************************************************************************/
-
-#include <stdint.h>
+#include "no_os_alloc.h"
 
 /**
- * @struct no_os_time
- * @brief Structure holding time data (seconds, microseconds).
+ * @brief Allocate memory and return a pointer to it.
+ * @param size - Size of the memory block, in bytes.
+ * @return Pointer to the allocated memory, or NULL if the request fails.
  */
-struct no_os_time {
-	unsigned int s, us;
-};
+__attribute__((weak)) void *no_os_malloc(size_t size)
+{
+	return malloc(size);
+}
 
-/******************************************************************************/
-/************************ Functions Declarations ******************************/
-/******************************************************************************/
+/**
+ * @brief Allocate memory and return a pointer to it, set memory to 0.
+ * @param nitems - Number of elements to be allocated.
+ * @param size - Size of elements.
+ * @return Pointer to the allocated memory, or NULL if the request fails.
+ */
+__attribute__((weak)) void *no_os_calloc(size_t nitems, size_t size)
+{
+	return calloc(nitems, size);
+}
 
-/* Generate microseconds delay. */
-void no_os_udelay(uint32_t usecs);
-
-/* Generate miliseconds delay. */
-void no_os_mdelay(uint32_t msecs);
-
-/* Get current time */
-struct no_os_time no_os_get_time(void);
-
-#endif // _NO_OS_DELAY_H_
+/**
+ * @brief Deallocate memory previously allocated by a call to no_os_calloc
+ * 		  or no_os_malloc.
+ * @param ptr - Pointer to a memory block previously allocated by a call
+ * 		  to no_os_calloc or no_os_malloc.
+ * @return None.
+ */
+__attribute__((weak)) void no_os_free(void *ptr)
+{
+	free(ptr);
+}

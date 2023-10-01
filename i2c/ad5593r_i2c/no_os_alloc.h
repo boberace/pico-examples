@@ -1,9 +1,9 @@
-/***************************************************************************//**
- *   @file   no_os_delay.h
- *   @brief  Header file of Delay functions
- *   @author DBogdan (dragos.bogdan@analog.com)
+/*******************************************************************************
+ *   @file   no_os_alloc.h
+ *   @brief  Header file of memory allocator.
+ *   @author GMois (george.mois@analog.com)
 ********************************************************************************
- * Copyright 2019(c) Analog Devices, Inc.
+ * Copyright 2023(c) Analog Devices, Inc.
  *
  * All rights reserved.
  *
@@ -36,35 +36,20 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
+#ifndef _NO_OS_ALLOC_H_
+#define _NO_OS_ALLOC_H_
 
-#ifndef _NO_OS_DELAY_H_
-#define _NO_OS_DELAY_H_
+#include <stdio.h>
+#include <stdlib.h>
 
-/******************************************************************************/
-/***************************** Include Files **********************************/
-/******************************************************************************/
+/* Allocate memory and return a pointer to it */
+void *no_os_malloc(size_t size);
 
-#include <stdint.h>
+/* Allocate memory and return a pointer to it, set memory to 0 */
+void *no_os_calloc(size_t nitems, size_t size);
 
-/**
- * @struct no_os_time
- * @brief Structure holding time data (seconds, microseconds).
- */
-struct no_os_time {
-	unsigned int s, us;
-};
+/* Deallocate memory previously allocated by a call to no_os_calloc or
+ * no_os_malloc */
+void no_os_free(void *ptr);
 
-/******************************************************************************/
-/************************ Functions Declarations ******************************/
-/******************************************************************************/
-
-/* Generate microseconds delay. */
-void no_os_udelay(uint32_t usecs);
-
-/* Generate miliseconds delay. */
-void no_os_mdelay(uint32_t msecs);
-
-/* Get current time */
-struct no_os_time no_os_get_time(void);
-
-#endif // _NO_OS_DELAY_H_
+#endif // _NO_OS_ALLOC_H_

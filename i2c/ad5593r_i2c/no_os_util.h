@@ -116,9 +116,17 @@
 
 #define no_os_shift_right(x, s) ((x) < 0 ? -(-(x) >> (s)) : (x) >> (s))
 
+#define no_os_align(x, align) (((x) + ((typeof(x))(align) - 1)) & ~((typeof(x))(align) - 1))
+
 /******************************************************************************/
 /************************ Functions Declarations ******************************/
 /******************************************************************************/
+/* Check if bit set */
+inline int no_os_test_bit(int pos, const volatile void * addr)
+{
+	return (((const int *)addr)[pos / 32] >> pos) & 1UL;
+}
+
 /* Find first set bit in word. */
 uint32_t no_os_find_first_set_bit(uint32_t word);
 /* Find last set bit in word. */
@@ -136,6 +144,8 @@ int32_t no_os_log_base_2(uint32_t x);
 /* Find greatest common divisor of the given two numbers. */
 uint32_t no_os_greatest_common_divisor(uint32_t a,
 				       uint32_t b);
+/* Find lowest common multiple of the given two numbers. */
+uint32_t no_os_lowest_common_multiple(uint32_t a, uint32_t b);
 /* Calculate best rational approximation for a given fraction. */
 void no_os_rational_best_approximation(uint32_t given_numerator,
 				       uint32_t given_denominator,
@@ -185,5 +195,8 @@ int16_t no_os_sign_extend16(uint16_t value, int index);
 int32_t no_os_sign_extend32(uint32_t value, int index);
 uint64_t no_os_mul_u32_u32(uint32_t a, uint32_t b);
 uint64_t no_os_mul_u64_u32_shr(uint64_t a, uint32_t mul, unsigned int shift);
+
+bool no_os_is_big_endian(void);
+void no_os_memswap64(void *buf, uint32_t bytes, uint32_t step);
 
 #endif // _NO_OS_UTIL_H_

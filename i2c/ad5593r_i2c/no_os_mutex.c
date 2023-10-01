@@ -1,9 +1,9 @@
-/***************************************************************************//**
- *   @file   no_os_delay.h
- *   @brief  Header file of Delay functions
- *   @author DBogdan (dragos.bogdan@analog.com)
+/*******************************************************************************
+ *   @file   util/no_os_mutex.c
+ *   @brief  Implementation of no-OS mutex funtionality.
+ *   @author Robert Budai (robert.budai@analog.com)
 ********************************************************************************
- * Copyright 2019(c) Analog Devices, Inc.
+ * Copyright 2023(c) Analog Devices, Inc.
  *
  * All rights reserved.
  *
@@ -37,34 +37,33 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
 
-#ifndef _NO_OS_DELAY_H_
-#define _NO_OS_DELAY_H_
-
-/******************************************************************************/
-/***************************** Include Files **********************************/
-/******************************************************************************/
-
-#include <stdint.h>
+#include "no_os_mutex.h"
 
 /**
- * @struct no_os_time
- * @brief Structure holding time data (seconds, microseconds).
+ * @brief Initialize mutex.
+ * @param ptr - Pointer toward the mutex.
+ * @return None.
  */
-struct no_os_time {
-	unsigned int s, us;
-};
+__attribute__((weak)) inline void no_os_mutex_init(void **mutex) {}
 
-/******************************************************************************/
-/************************ Functions Declarations ******************************/
-/******************************************************************************/
+/**
+ * @brief Lock mutex.
+ * @param ptr - Pointer toward the mutex.
+ * @return None.
+ */
+__attribute__((weak)) inline void no_os_mutex_lock(void *mutex) {}
 
-/* Generate microseconds delay. */
-void no_os_udelay(uint32_t usecs);
+/**
+ * @brief Unlock mutex.
+ * @param ptr - Pointer toward the mutex.
+ * @return None.
+ */
+__attribute((weak)) inline void no_os_mutex_unlock(void *mutex) {}
 
-/* Generate miliseconds delay. */
-void no_os_mdelay(uint32_t msecs);
+/**
+ * @brief Remove mutex.
+ * @param ptr - Pointer toward the mutex.
+ * @return None.
+ */
+__attribute__((weak)) inline void no_os_mutex_remove(void *mutex) {}
 
-/* Get current time */
-struct no_os_time no_os_get_time(void);
-
-#endif // _NO_OS_DELAY_H_
