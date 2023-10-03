@@ -1,9 +1,5 @@
-/***************************************************************************//**
- *   @file   ad5592r-base.c
- *   @brief  Implementation of AD5592R Base Driver.
- *   @author Mircea Caprioru (mircea.caprioru@analog.com)
-********************************************************************************
- * Copyright 2018, 2020(c) Analog Devices, Inc.
+/********************************************************************************
+ * Copyright 2018(c) Analog Devices, Inc.
  *
  * All rights reserved.
  *
@@ -36,7 +32,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
-#include "no_os_error.h"
+
 #include "ad5592r-base.h"
 
 /**
@@ -80,9 +76,9 @@ int32_t ad5592r_gpio_get(struct ad5592r_dev *dev, uint8_t offset)
 	uint8_t val;
 
 	if (!dev)
-		return -1;
+		return FAILURE;
 
-	if (dev->gpio_out & NO_OS_BIT(offset))
+	if (dev->gpio_out & BIT(offset))
 		val = dev->gpio_val;
 	else
 		ret = dev->ops->gpio_read(dev, &val);
@@ -90,7 +86,7 @@ int32_t ad5592r_gpio_get(struct ad5592r_dev *dev, uint8_t offset)
 	if (ret < 0)
 		return ret;
 
-	return !!(val & NO_OS_BIT(offset));
+	return !!(val & BIT(offset));
 }
 
 /**
@@ -103,12 +99,12 @@ int32_t ad5592r_gpio_get(struct ad5592r_dev *dev, uint8_t offset)
 int32_t ad5592r_gpio_set(struct ad5592r_dev *dev, uint8_t offset, int32_t value)
 {
 	if (!dev)
-		return -1;
+		return FAILURE;
 
 	if (value)
-		dev->gpio_val |= NO_OS_BIT(offset);
+		dev->gpio_val |= BIT(offset);
 	else
-		dev->gpio_val &= ~NO_OS_BIT(offset);
+		dev->gpio_val &= ~BIT(offset);
 
 	return ad5592r_base_reg_write(dev, AD5592R_REG_GPIO_SET,
 				      dev->gpio_val);
@@ -126,10 +122,10 @@ int32_t ad5592r_gpio_direction_input(struct ad5592r_dev *dev, uint8_t offset)
 	int32_t ret;
 
 	if (!dev)
-		return -1;
+		return FAILURE;
 
-	dev->gpio_out &= ~NO_OS_BIT(offset);
-	dev->gpio_in |= NO_OS_BIT(offset);
+	dev->gpio_out &= ~BIT(offset);
+	dev->gpio_in |= BIT(offset);
 
 	ret = ad5592r_base_reg_write(dev, AD5592R_REG_GPIO_OUT_EN,
 				     dev->gpio_out);
@@ -154,15 +150,15 @@ int32_t ad5592r_gpio_direction_output(struct ad5592r_dev *dev,
 	int32_t ret;
 
 	if (!dev)
-		return -1;
+		return FAILURE;
 
 	if (value)
-		dev->gpio_val |= NO_OS_BIT(offset);
+		dev->gpio_val |= BIT(offset);
 	else
-		dev->gpio_val &= ~NO_OS_BIT(offset);
+		dev->gpio_val &= ~BIT(offset);
 
-	dev->gpio_in &= ~NO_OS_BIT(offset);
-	dev->gpio_out |= NO_OS_BIT(offset);
+	dev->gpio_in &= ~BIT(offset);
+	dev->gpio_out |= BIT(offset);
 
 	ret = ad5592r_base_reg_write(dev, AD5592R_REG_GPIO_SET, dev->gpio_val);
 	if (ret < 0)
@@ -190,12 +186,12 @@ int32_t ad5592r_software_reset(struct ad5592r_dev *dev)
 	int32_t ret;
 
 	if (!dev)
-		return -1;
+		return FAILURE;
 
 	/* Writing this magic value resets the device */
 	ret = ad5592r_base_reg_write(dev, AD5592R_REG_RESET, 0xdac);
 
-	no_os_mdelay(10);
+	mdelay(10);
 
 	return ret;
 }
@@ -214,32 +210,26 @@ int32_t ad5592r_set_channel_modes(struct ad5592r_dev *dev)
 	uint16_t read_back;
 
 	if (!dev)
-		return -1;
-
-	dev->gpio_in = 0;
-	dev->gpio_out = 0;
+		return FAILURE;
 
 	for (i = 0; i < dev->num_channels; i++) {
 		switch (dev->channel_modes[i]) {
 		case CH_MODE_DAC:
-			dac |= NO_OS_BIT(i);
+			dac |= BIT(i);
 			break;
 
 		case CH_MODE_ADC:
-			adc |= NO_OS_BIT(i);
+			adc |= BIT(i);
 			break;
 
 		case CH_MODE_DAC_AND_ADC:
-			dac |= NO_OS_BIT(i);
-			adc |= NO_OS_BIT(i);
+			dac |= BIT(i);
+			adc |= BIT(i);
 			break;
 
-		case CH_MODE_GPI:
-			dev->gpio_in |= NO_OS_BIT(i);
-			break;
-
-		case CH_MODE_GPO:
-			dev->gpio_out |= NO_OS_BIT(i);
+		case CH_MODE_GPIO:
+			dev->gpio_map |= BIT(i);
+			dev->gpio_in |= BIT(i); /* Default to input */
 			break;
 
 		case CH_MODE_UNUSED:
@@ -247,22 +237,22 @@ int32_t ad5592r_set_channel_modes(struct ad5592r_dev *dev)
 		default:
 			switch (dev->channel_offstate[i]) {
 			case CH_OFFSTATE_OUT_TRISTATE:
-				tristate |= NO_OS_BIT(i);
+				tristate |= BIT(i);
 				break;
 
 			case CH_OFFSTATE_OUT_LOW:
-				dev->gpio_out |= NO_OS_BIT(i);
+				dev->gpio_out |= BIT(i);
 				break;
 
 			case CH_OFFSTATE_OUT_HIGH:
-				dev->gpio_out |= NO_OS_BIT(i);
-				dev->gpio_val |= NO_OS_BIT(i);
+				dev->gpio_out |= BIT(i);
+				dev->gpio_val |= BIT(i);
 				break;
 
 			case CH_OFFSTATE_PULLDOWN:
 			/* fall-through */
 			default:
-				pulldown |= NO_OS_BIT(i);
+				pulldown |= BIT(i);
 				break;
 			}
 		}
@@ -303,7 +293,7 @@ int32_t ad5592r_set_channel_modes(struct ad5592r_dev *dev)
 	/* Verify that we can read back at least one register */
 	ret = ad5592r_base_reg_read(dev, AD5592R_REG_ADC_EN, &read_back);
 	if (!ret && (read_back & 0xff) != adc)
-		return -1;
+		return FAILURE;
 
 	return ret;
 }
@@ -316,10 +306,10 @@ int32_t ad5592r_set_channel_modes(struct ad5592r_dev *dev)
  */
 int32_t ad5592r_reset_channel_modes(struct ad5592r_dev *dev)
 {
-	uint32_t i;
+	int32_t i;
 
 	if (!dev)
-		return -1;
+		return FAILURE;
 
 	for (i = 0; i < sizeof(dev->channel_modes); i++)
 		dev->channel_modes[i] = CH_MODE_UNUSED;

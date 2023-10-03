@@ -1,9 +1,5 @@
-/***************************************************************************//**
- *   @file   ad5593r.c
- *   @brief  Implementation of AD5593R driver.
- *   @author Mircea Caprioru (mircea.caprioru@analog.com)
-********************************************************************************
- * Copyright 2018, 2020(c) Analog Devices, Inc.
+/********************************************************************************
+ * Copyright 2018(c) Analog Devices, Inc.
  *
  * All rights reserved.
  *
@@ -38,8 +34,8 @@
 *******************************************************************************/
 
 #include "ad5592r-base.h"
-#include "no_os_error.h"
 #include "ad5593r.h"
+
 
 #define AD5593R_MODE_CONF		(0 << 4)
 #define AD5593R_MODE_DAC_WRITE		(1 << 4)
@@ -52,14 +48,30 @@
 #define RESTART_BIT	0
 #define AD5593R_ADC_VALUES_BUFF_SIZE	    18
 
-const struct ad5592r_rw_ops ad5593r_rw_ops = {
-	.write_dac = ad5593r_write_dac,
-	.read_adc = ad5593r_read_adc,
-	.multi_read_adc= ad5593r_multi_read_adc,
-	.reg_write = ad5593r_reg_write,
-	.reg_read = ad5593r_reg_read,
-	.gpio_read = ad5593r_gpio_read,
-};
+/**
+ * Calculate the number of set bits (8-bit size).
+ */
+unsigned int hweight8(uint8_t word)
+{
+	uint32_t count = 0;
+
+	while (word) {
+		if (word & 0x1)
+			count++;
+		word >>= 1;
+	}
+
+	return count;
+}
+
+/**
+ * Calculate the number of set bits (16-bit size).
+ */
+unsigned int hweight16(uint16_t word)
+{
+	return hweight8(word >> 8) +
+	       hweight8(word);
+}
 
 /**
  * Write DAC channel.
@@ -75,13 +87,13 @@ int32_t ad5593r_write_dac(struct ad5592r_dev *dev, uint8_t chan,
 	uint8_t data[3];
 
 	if (!dev)
-		return -1;
+		return FAILURE;
 
 	data[0] = AD5593R_MODE_DAC_WRITE | chan;
 	data[1] = (value >> 8) & 0xF ;
 	data[2] = value & 0xFF;
 
-	return no_os_i2c_write(dev->i2c, data, sizeof(data), STOP_BIT);
+	return i2c_write(dev->i2c, data, sizeof(data), STOP_BIT);
 }
 
 /**
@@ -100,24 +112,24 @@ int32_t ad5593r_read_adc(struct ad5592r_dev *dev, uint8_t chan,
 	uint16_t temp;
 
 	if (!dev)
-		return -1;
+		return FAILURE;
 
-	temp = NO_OS_BIT(chan);
+	temp = BIT(chan);
 
 	data[0] = AD5593R_MODE_CONF | AD5592R_REG_ADC_SEQ;
 	data[1] = temp >> 8;
 	data[2] = temp & 0xFF;
 
-	ret = no_os_i2c_write(dev->i2c, data, sizeof(data), STOP_BIT);
+	ret = i2c_write(dev->i2c, data, sizeof(data), STOP_BIT);
 	if (ret < 0)
 		return ret;
 
 	data[0] = AD5593R_MODE_ADC_READBACK;
-	ret = no_os_i2c_write(dev->i2c, data, 1, STOP_BIT);
+	ret = i2c_write(dev->i2c, data, 1, STOP_BIT);
 	if (ret < 0)
 		return ret;
 
-	ret = no_os_i2c_read(dev->i2c, data, 2, STOP_BIT);
+	ret = i2c_read(dev->i2c, data, 2, STOP_BIT);
 	if (ret < 0)
 		return ret;
 
@@ -125,6 +137,7 @@ int32_t ad5593r_read_adc(struct ad5592r_dev *dev, uint8_t chan,
 
 	return 0;
 }
+
 
 /**
  * Read Multiple ADC Channels.
@@ -144,22 +157,22 @@ int32_t ad5593r_multi_read_adc(struct ad5592r_dev *dev, uint16_t chans,
 	if (!dev)
 		return -1;
 
-	samples = no_os_hweight16(chans);
+	samples = hweight16(chans);
 
 	data[0] = AD5593R_MODE_CONF | AD5592R_REG_ADC_SEQ;
 	data[1] = chans >> 8;
 	data[2] = chans & 0xFF;
 
-	ret = no_os_i2c_write(dev->i2c, data, 3, STOP_BIT);
+	ret = i2c_write(dev->i2c, data, 3, STOP_BIT);
 	if (ret < 0)
 		return ret;
 
 	data[0] = AD5593R_MODE_ADC_READBACK;
-	ret = no_os_i2c_write(dev->i2c, data, 1, RESTART_BIT);
+	ret = i2c_write(dev->i2c, data, 1, RESTART_BIT);
 	if (ret < 0)
 		return ret;
 
-	ret = no_os_i2c_read(dev->i2c, data, (2 * samples), STOP_BIT);
+	ret = i2c_read(dev->i2c, data, (2 * samples), STOP_BIT);
 	if (ret < 0)
 		return ret;
 
@@ -181,23 +194,16 @@ int32_t ad5593r_multi_read_adc(struct ad5592r_dev *dev, uint16_t chans,
 int32_t ad5593r_reg_write(struct ad5592r_dev *dev, uint8_t reg,
 			  uint16_t value)
 {
-	int32_t ret;
 	uint8_t data[3];
 
 	if (!dev)
-		return -1;
+		return FAILURE;
 
 	data[0] = AD5593R_MODE_CONF | reg;
 	data[1] = value >> 8;
 	data[2] = value;
 
-	ret = no_os_i2c_write(dev->i2c, data,sizeof(data), STOP_BIT);
-
-	if (reg == AD5592R_REG_RESET && ret < 0) {
-		return 0;
-	}
-
-	return ret;
+	return i2c_write(dev->i2c, data,sizeof(data), STOP_BIT);
 }
 
 /**
@@ -215,15 +221,15 @@ int32_t ad5593r_reg_read(struct ad5592r_dev *dev, uint8_t reg,
 	uint8_t data[2];
 
 	if (!dev)
-		return -1;
+		return FAILURE;
 
 	data[0] = AD5593R_MODE_REG_READBACK | reg;
 
-	ret = no_os_i2c_write(dev->i2c, data, 1, STOP_BIT);
+	ret = i2c_write(dev->i2c, data, 1, 0);
 	if (ret < 0)
 		return ret;
 
-	ret = no_os_i2c_read(dev->i2c, data, sizeof(data), STOP_BIT);
+	ret = i2c_read(dev->i2c, data, sizeof(data), STOP_BIT);
 	if (ret < 0)
 		return ret;
 
@@ -245,14 +251,14 @@ int32_t ad5593r_gpio_read(struct ad5592r_dev *dev, uint8_t *value)
 	uint8_t data[2];
 
 	if (!dev)
-		return -1;
+		return FAILURE;
 
 	data[0] = AD5593R_MODE_GPIO_READBACK;
-	ret = no_os_i2c_write(dev->i2c, data, 1, STOP_BIT);
+	ret = i2c_write(dev->i2c, data, 1, 0);
 	if (ret < 0)
 		return ret;
 
-	ret = no_os_i2c_read(dev->i2c, data, sizeof(data), STOP_BIT);
+	ret = i2c_read(dev->i2c, data, sizeof(data), STOP_BIT);
 	if (ret < 0)
 		return ret;
 
@@ -265,7 +271,6 @@ int32_t ad5593r_gpio_read(struct ad5592r_dev *dev, uint8_t *value)
  * Initialize AD5593r device.
  *
  * @param dev - The device structure.
- * @param init_param - The initial parameters of the device.
  * @return 0 in case of success, negative error code otherwise
  */
 int32_t ad5593r_init(struct ad5592r_dev *dev,
@@ -275,13 +280,16 @@ int32_t ad5593r_init(struct ad5592r_dev *dev,
 	uint16_t temp_reg_val;
 
 	if (!dev)
-		return -1;
+		return FAILURE;
 
-	dev->ops = &ad5593r_rw_ops;
+	/* commented out the soft reset as the device does not generate an ACK on reset
+	per data sheet and so it hangs up the bus. Not sure how to handle this 
+	so for now just ignore as this is called on startup anyway.  Not sure why
+	this is called here.  Also, all paramters are set on initialization... */
 
-	ret = ad5592r_software_reset(dev);
-	if (ret < 0)
-		return ret;
+	// ret = ad5592r_software_reset(dev);
+	// if (ret < 0)
+	// 	return ret;
 
 	ret = ad5592r_set_channel_modes(dev);
 	if (ret < 0)

@@ -1,9 +1,5 @@
-/***************************************************************************//**
- *   @file   ad5592r-base.h
- *   @brief  Header file of AD5592R Base Driver.
- *   @author Mircea Caprioru (mircea.caprioru@analog.com)
-********************************************************************************
- * Copyright 2018, 2020(c) Analog Devices, Inc.
+/********************************************************************************
+ * Copyright 2018(c) Analog Devices, Inc.
  *
  * All rights reserved.
  *
@@ -40,18 +36,15 @@
 #define AD5592R_BASE_H_
 
 #include "stdint.h"
-#include "no_os_delay.h"
-#include "no_os_spi.h"
-#include "no_os_i2c.h"
-#include "no_os_util.h"
-#include <stdbool.h>
+#include "ad5593r_pico_i2c.h"
+
+#define BIT(n) (1<<(n))
 
 #define CH_MODE_UNUSED			0
 #define CH_MODE_ADC			1
 #define CH_MODE_DAC			2
 #define CH_MODE_DAC_AND_ADC		3
-#define CH_MODE_GPI			4
-#define CH_MODE_GPO			5
+#define CH_MODE_GPIO			8
 
 #define CH_OFFSTATE_PULLDOWN		0
 #define CH_OFFSTATE_OUT_LOW		1
@@ -76,21 +69,21 @@ enum ad5592r_registers {
 	AD5592R_REG_RESET		= 0xF,
 };
 
-#define AD5592R_REG_PD_PD_ALL			    NO_OS_BIT(10)
-#define AD5592R_REG_PD_EN_REF			    NO_OS_BIT(9)
+#define AD5592R_REG_PD_PD_ALL		BIT(10)
+#define AD5592R_REG_PD_EN_REF		BIT(9)
 
-#define AD5592R_REG_CTRL_ADC_PC_BUFF		    NO_OS_BIT(9)
-#define AD5592R_REG_CTRL_ADC_BUFF_EN		    NO_OS_BIT(8)
-#define AD5592R_REG_CTRL_CONFIG_LOCK		    NO_OS_BIT(7)
-#define AD5592R_REG_CTRL_W_ALL_DACS		    NO_OS_BIT(6)
-#define AD5592R_REG_CTRL_ADC_RANGE		    NO_OS_BIT(5)
-#define AD5592R_REG_CTRL_DAC_RANGE		    NO_OS_BIT(4)
+#define AD5592R_REG_CTRL_ADC_PC_BUFF	BIT(9)
+#define AD5592R_REG_CTRL_ADC_BUFF_EN	BIT(8)
+#define AD5592R_REG_CTRL_CONFIG_LOCK	BIT(7)
+#define AD5592R_REG_CTRL_W_ALL_DACS		BIT(6)
+#define AD5592R_REG_CTRL_ADC_RANGE		BIT(5)
+#define AD5592R_REG_CTRL_DAC_RANGE		BIT(4)
 
-#define AD5592R_REG_ADC_SEQ_REP			    NO_OS_BIT(9)
-#define AD5592R_REG_ADC_SEQ_TEMP_READBACK	    NO_OS_BIT(8)
-#define AD5592R_REG_ADC_SEQ_CODE_MSK(x)		    ((x) & 0x0FFF)
+#define AD5592R_REG_ADC_SEQ_REP			    BIT(9)
+#define AD5592R_REG_ADC_SEQ_TEMP_READBACK	BIT(8)
+#define AD5592R_REG_ADC_SEQ_CODE_MSK(x)		((x) & 0x0FFF)
 
-#define AD5592R_REG_GPIO_OUT_EN_ADC_NOT_BUSY	    NO_OS_BIT(8)
+#define AD5592R_REG_GPIO_OUT_EN_ADC_NOT_BUSY	BIT(8)
 
 #define AD5592R_REG_LDAC_IMMEDIATE_OUT		    0x00
 #define AD5592R_REG_LDAC_INPUT_REG_ONLY		    0x01
@@ -105,7 +98,7 @@ struct ad5592r_rw_ops {
 			     uint16_t value);
 	int32_t (*read_adc)(struct ad5592r_dev *dev, uint8_t chan,
 			    uint16_t *value);
-	int32_t(*multi_read_adc)(struct ad5592r_dev *dev,
+	int32_t (*multi_read_adc)(struct ad5592r_dev *dev,
 				 uint16_t chans, uint16_t *value);
 	int32_t (*reg_write)(struct ad5592r_dev *dev, uint8_t reg,
 			     uint16_t value);
@@ -120,18 +113,16 @@ struct ad5592r_init_param {
 
 struct ad5592r_dev {
 	const struct ad5592r_rw_ops *ops;
-	struct no_os_i2c_desc *i2c;
-	struct no_os_spi_desc *spi;
-	uint16_t spi_msg;
+	i2c_desc *i2c;
 	uint8_t num_channels;
 	uint16_t cached_dac[8];
 	uint16_t cached_gp_ctrl;
 	uint8_t channel_modes[8];
 	uint8_t channel_offstate[8];
+	uint8_t gpio_map;
 	uint8_t gpio_out;
 	uint8_t gpio_in;
 	uint8_t gpio_val;
-	uint8_t ldac_mode;
 };
 
 int32_t ad5592r_base_reg_write(struct ad5592r_dev *dev, uint8_t reg,

@@ -1,9 +1,5 @@
-/***************************************************************************//**
- *   @file   ad5593r.h
- *   @brief  Header file of AD5593R driver.
- *   @author Mircea Caprioru (mircea.caprioru@analog.com)
-********************************************************************************
- * Copyright 2018, 2020(c) Analog Devices, Inc.
+/********************************************************************************
+ * Copyright 2018(c) Analog Devices, Inc.
  *
  * All rights reserved.
  *
