@@ -1,7 +1,7 @@
 /*
 
     i2c0 pins 12,13 initialized and used by add5593r
-
+    todo : initialize in here and pass to ad5593r_init_pico
 */
 #include <stdio.h>
 #include "pico/stdlib.h"
@@ -10,8 +10,6 @@
 
 int main() {
     stdio_init_all();
-    setup_i2c0();
-
     sleep_ms(2000);
     printf("\nAD5593R\n");
     uint32_t ret = 0;

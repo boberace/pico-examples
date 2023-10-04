@@ -27,8 +27,7 @@
 
 #define I2C_SDA_PIN 18 
 #define I2C_SCL_PIN 19
-#define I2C i2c1 // depends on pin selection for either zero or one
-
+#define I2C i2c1 // depends on pin selection for either zero or onez
 static const uint8_t LP_GPIO[]={0,1,2,3,4,5,6,7};
 
 // I2C reserves some addresses for special purposes. We exclude these from the scan.

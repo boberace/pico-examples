@@ -20,5 +20,5 @@ pico_add_extra_outputs(bno085_spi)
 # add url via pico_set_program_url
 example_auto_set_url(bno085_spi)
 
-pico_enable_stdio_usb(bno085_spi 1)
-pico_enable_stdio_uart(bno085_spi 0)
+pico_enable_stdio_usb(bno085_spi 0)
+pico_enable_stdio_uart(bno085_spi 1)
