@@ -12,6 +12,6 @@
 
 #define MEMP_NUM_SYS_TIMEOUT            (LWIP_NUM_SYS_TIMEOUT_INTERNAL+3) //https://github.com/raspberrypi/pico-sdk/issues/1281
 
-#include "lwipopts_examples_common.h"
+#include "pico_w/wifi/lwipopts_examples_common.h"
 
 #endif
