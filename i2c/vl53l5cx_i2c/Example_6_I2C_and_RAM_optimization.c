@@ -60,16 +60,13 @@
 *
 *******************************************************************************/
 
-/***********************************/
-/*   VL53L5CX ULD basic example    */
-/***********************************/
+/**************************************/
+/*  VL53L5CX ULD I2C/RAM optimization */
+/**************************************/
 /*
-* This example is the most basic. It initializes the VL53L5CX ULD, and starts
+* This example shows the possibility of VL53L5CX to reduce I2C transactions
+* and RAM footprint. It initializes the VL53L5CX ULD, and starts
 * a ranging to capture 10 frames.
-*
-* By default, ULD is configured to have the following settings :
-* - Resolution 4x4
-* - Ranging period 1Hz
 *
 * In this example, we also suppose that the number of target per zone is
 * set to 1 , and all output are enabled (see file platform.h).
@@ -84,11 +81,19 @@
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 
+#define VL53L5CX_DISABLE_AMBIENT_PER_SPAD
+#define VL53L5CX_DISABLE_NB_SPADS_ENABLED
+#define VL53L5CX_DISABLE_SIGNAL_PER_SPAD
+#define VL53L5CX_DISABLE_RANGE_SIGMA_MM
+#define VL53L5CX_DISABLE_REFLECTANCE_PERCENT
+#define VL53L5CX_DISABLE_MOTION_INDICATOR
+
 #define TOF_I2C_INST i2c1
 #define TOF_PIN_I2C_SDA 18
 #define TOF_PIN_I2C_SCL 19
 #define TOF_I2C_BUADRATE 1000*1000
 static const uint8_t LP_GPIO[]={0,1,2,3,4,5,6,7};
+
 
 int main(void)
 {
@@ -101,7 +106,7 @@ int main(void)
 	VL53L5CX_Configuration 	Dev;			/* Sensor configuration */
 	VL53L5CX_ResultsData 	Results;		/* Results data from VL53L5CX */
 
-
+	
 	/*********************************/
 	/*      Customer platform        */
 	/*********************************/
@@ -112,7 +117,7 @@ int main(void)
 
 	stdio_init_all();
 	sleep_ms(2000);
-	printf("VL53L5CX ULD basic example starting\n");
+	printf("VL53L5CX ULD I2C RAM optimization starting\n");
 
     i2c_init(TOF_I2C_INST, TOF_I2C_BUADRATE);
     gpio_set_function(TOF_PIN_I2C_SDA, GPIO_FUNC_I2C);
@@ -139,7 +144,7 @@ int main(void)
 	*/
 	//status = vl53l5cx_set_i2c_address(&Dev, 0x20);
 
-
+	
 	/*********************************/
 	/*   Power on sensor and init    */
 	/*********************************/
@@ -162,7 +167,26 @@ int main(void)
 
 	printf("VL53L5CX ULD ready ! (Version : %s)\n",
 			VL53L5CX_API_REVISION);
+			
 
+	/*********************************/
+	/*   Reduce RAM & I2C access	 */
+	/*********************************/
+
+	/* Results can be tuned in order to reduce I2C access and RAM footprints.
+	 * The 'platform.h' file contains macros used to disable output. If user declare 
+	 * one of these macros, the results will not be sent through I2C, and the array will not 
+	 * be created into the VL53L5CX_ResultsData structure.
+	 * For the minimum size, ST recommends 1 targets per zone, and only keep distance_mm,
+	 * target_status, and nb_target_detected. The following macros can be defined into file 'platform.h':
+	 *
+	 * #define VL53L5CX_DISABLE_AMBIENT_PER_SPAD
+	 * #define VL53L5CX_DISABLE_NB_SPADS_ENABLED
+	 * #define VL53L5CX_DISABLE_SIGNAL_PER_SPAD
+	 * #define VL53L5CX_DISABLE_RANGE_SIGMA_MM
+	 * #define VL53L5CX_DISABLE_REFLECTANCE_PERCENT
+	 * #define VL53L5CX_DISABLE_MOTION_INDICATOR
+	 */
 
 	/*********************************/
 	/*         Ranging loop          */

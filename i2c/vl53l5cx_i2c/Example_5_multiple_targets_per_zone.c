@@ -61,18 +61,12 @@
 *******************************************************************************/
 
 /***********************************/
-/*   VL53L5CX ULD basic example    */
+/*  VL53L5CX ULD multiple targets  */
 /***********************************/
 /*
-* This example is the most basic. It initializes the VL53L5CX ULD, and starts
+* This example shows the possibility of VL53L5CX to get/set params. It
+* initializes the VL53L5CX ULD, set a configuration, and starts
 * a ranging to capture 10 frames.
-*
-* By default, ULD is configured to have the following settings :
-* - Resolution 4x4
-* - Ranging period 1Hz
-*
-* In this example, we also suppose that the number of target per zone is
-* set to 1 , and all output are enabled (see file platform.h).
 */
 
 #include <stdlib.h>
@@ -92,16 +86,15 @@ static const uint8_t LP_GPIO[]={0,1,2,3,4,5,6,7};
 
 int main(void)
 {
-
 	/*********************************/
 	/*   VL53L5CX ranging variables  */
 	/*********************************/
 
-	uint8_t 				status, loop, isAlive, isReady, i;
+	uint8_t 				status, loop, isAlive, isReady, i, j;
 	VL53L5CX_Configuration 	Dev;			/* Sensor configuration */
 	VL53L5CX_ResultsData 	Results;		/* Results data from VL53L5CX */
 
-
+	
 	/*********************************/
 	/*      Customer platform        */
 	/*********************************/
@@ -112,7 +105,7 @@ int main(void)
 
 	stdio_init_all();
 	sleep_ms(2000);
-	printf("VL53L5CX ULD basic example starting\n");
+	printf("VL53L5CX ULD multiple targets starting\n");
 
     i2c_init(TOF_I2C_INST, TOF_I2C_BUADRATE);
     gpio_set_function(TOF_PIN_I2C_SDA, GPIO_FUNC_I2C);
@@ -139,7 +132,7 @@ int main(void)
 	*/
 	//status = vl53l5cx_set_i2c_address(&Dev, 0x20);
 
-
+	
 	/*********************************/
 	/*   Power on sensor and init    */
 	/*********************************/
@@ -162,7 +155,16 @@ int main(void)
 
 	printf("VL53L5CX ULD ready ! (Version : %s)\n",
 			VL53L5CX_API_REVISION);
+			
 
+	/*********************************/
+	/*	Set nb target per zone       */
+	/*********************************/
+
+	/* Each zone can output between 1 and 4 targets. By default the output
+	 * is set to 1 targets, but user can change it using macro
+	 * VL53L5CX_NB_TARGET_PER_ZONE located in file 'platform.h'.
+	 */
 
 	/*********************************/
 	/*         Ranging loop          */
@@ -183,16 +185,30 @@ int main(void)
 		{
 			vl53l5cx_get_ranging_data(&Dev, &Results);
 
-			/* As the sensor is set in 4x4 mode by default, we have a total 
-			 * of 16 zones to print. For this example, only the data of first zone are 
-			 * print */
+			/* As the sensor is set in 4x4 mode by default, we have a total
+			 * of 16 zones to print */
 			printf("Print data no : %3u\n", Dev.streamcount);
 			for(i = 0; i < 16; i++)
 			{
-				printf("Zone : %3d, Status : %3u, Distance : %4d mm\n",
+				/* Print per zone results. These results are the same for all targets */
+				printf("Zone %3u : %2u, %6lu, %6lu, ",
 					i,
-					Results.target_status[VL53L5CX_NB_TARGET_PER_ZONE*i],
-					Results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE*i]);
+					Results.nb_target_detected[i],
+					Results.ambient_per_spad[i],
+					Results.nb_spads_enabled[i]);
+
+				for(j = 0; j < VL53L5CX_NB_TARGET_PER_ZONE; j++)
+				{
+					/* Print per target results. These results depends of the target nb */
+					uint16_t idx = VL53L5CX_NB_TARGET_PER_ZONE * i + j;
+					printf("Target[%1u] : %2u, %4d, %6lu, %3u, ",
+						j,
+						Results.target_status[idx],
+						Results.distance_mm[idx],
+						Results.signal_per_spad[idx],
+						Results.range_sigma_mm[idx]);
+				}
+				printf("\n");
 			}
 			printf("\n");
 			loop++;

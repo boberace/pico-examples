@@ -61,15 +61,12 @@
 *******************************************************************************/
 
 /***********************************/
-/*   VL53L5CX ULD basic example    */
+/*    VL53L5CX ULD ranging mode    */
 /***********************************/
 /*
-* This example is the most basic. It initializes the VL53L5CX ULD, and starts
-* a ranging to capture 10 frames.
-*
-* By default, ULD is configured to have the following settings :
-* - Resolution 4x4
-* - Ranging period 1Hz
+* This example shows the differences between ranging modes of VL53L5CX
+* (mode continuous and autonomous). For both modes, it initializes the VL53L5CX
+* ULD, set the mode, and starts a ranging to capture 10 frames.
 *
 * In this example, we also suppose that the number of target per zone is
 * set to 1 , and all output are enabled (see file platform.h).
@@ -109,10 +106,9 @@ int main(void)
 	/* Fill the platform structure with customer's implementation. For this
 	* example, only the I2C address is used.
 	*/
-
 	stdio_init_all();
 	sleep_ms(2000);
-	printf("VL53L5CX ULD basic example starting\n");
+	printf("VL53L5CX ULD ranging mode starting\n");
 
     i2c_init(TOF_I2C_INST, TOF_I2C_BUADRATE);
     gpio_set_function(TOF_PIN_I2C_SDA, GPIO_FUNC_I2C);
@@ -139,7 +135,7 @@ int main(void)
 	*/
 	//status = vl53l5cx_set_i2c_address(&Dev, 0x20);
 
-
+	
 	/*********************************/
 	/*   Power on sensor and init    */
 	/*********************************/
@@ -165,45 +161,107 @@ int main(void)
 
 
 	/*********************************/
-	/*         Ranging loop          */
+	/*  Set ranging mode autonomous  */
 	/*********************************/
 
-	status = vl53l5cx_start_ranging(&Dev);
-
-	loop = 0;
-	while(loop < 10)
+	status = vl53l5cx_set_ranging_mode(&Dev, VL53L5CX_RANGING_MODE_AUTONOMOUS);
+	if(status)
 	{
-		/* Use polling function to know when a new measurement is ready.
-		 * Another way can be to wait for HW interrupt raised on PIN A3
-		 * (GPIO 1) when a new measurement is ready */
- 
-		status = vl53l5cx_check_data_ready(&Dev, &isReady);
+		printf("vl53l5cx_set_ranging_mode failed, status %u\n", status);
+		return status;
+	}
 
-		if(isReady)
-		{
-			vl53l5cx_get_ranging_data(&Dev, &Results);
+	/* Using autonomous mode, the integration time can be updated (not possible
+	 * using continuous) */
+	status = vl53l5cx_set_integration_time_ms(&Dev, 20);
 
-			/* As the sensor is set in 4x4 mode by default, we have a total 
-			 * of 16 zones to print. For this example, only the data of first zone are 
+	/* Start a ranging session */
+   	status = vl53l5cx_start_ranging(&Dev);
+   	printf("Start ranging autonomous\n");
+
+   	loop = 0;
+   	while(loop < 10)
+   	{
+   		status = vl53l5cx_check_data_ready(&Dev, &isReady);
+   		if(isReady)
+   		{
+   			vl53l5cx_get_ranging_data(&Dev, &Results);
+
+   			/* As the sensor is set in 4x4 mode by default, we have a total
+			 * of 16 zones to print. For this example, only the data of first zone are
 			 * print */
-			printf("Print data no : %3u\n", Dev.streamcount);
-			for(i = 0; i < 16; i++)
-			{
+   			printf("Print data no : %3u\n", Dev.streamcount);
+   			for(i = 0; i < 16; i++)
+   			{
 				printf("Zone : %3d, Status : %3u, Distance : %4d mm\n",
 					i,
 					Results.target_status[VL53L5CX_NB_TARGET_PER_ZONE*i],
 					Results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE*i]);
-			}
-			printf("\n");
-			loop++;
-		}
+   			}
+   			printf("\n");
+   			loop++;
+   		}
 
 		/* Wait a few ms to avoid too high polling (function in platform
 		 * file, not in API) */
-		WaitMs(&(Dev.platform), 5);
+   		WaitMs(&(Dev.platform), 5);
+   	}
+
+   	status = vl53l5cx_stop_ranging(&Dev);
+   	printf("Stop ranging autonomous\n");
+
+	
+	/*********************************/
+	/* Set ranging mode continuous   */
+	/*********************************/
+
+	/* In continuous mode, the integration time cannot be programmed
+	 * (automatically set to maximum value) */
+
+	status = vl53l5cx_set_ranging_mode(&Dev, VL53L5CX_RANGING_MODE_CONTINUOUS);
+	if(status)
+	{
+		printf("vl53l5cx_set_ranging_mode failed, status %u\n", status);
+		return status;
 	}
 
-	status = vl53l5cx_stop_ranging(&Dev);
-	printf("End of ULD demo\n");
-	return status;
+	/* Trying to update value below will have no impact on integration time */
+	//status = vl53l5cx_set_integration_time_ms(&Dev, 20);
+
+	/* Start a ranging session */
+   	status = vl53l5cx_start_ranging(&Dev);
+   	printf("Start ranging continuous\n");
+
+   	loop = 0;
+   	while(loop < 10)
+   	{
+   		status = vl53l5cx_check_data_ready(&Dev, &isReady);
+   		if(isReady)
+   		{
+   			vl53l5cx_get_ranging_data(&Dev, &Results);
+
+   			/* As the sensor is set in 4x4 mode by default, we have a total
+			 * of 16 zones to print */
+   			printf("Print data no : %3u\n", Dev.streamcount);
+   			for(i = 0; i < 16; i++)
+   			{
+   				printf("Zone : %3d, Status : %3u, Distance : %4d mm\n",
+					i,
+					Results.target_status[VL53L5CX_NB_TARGET_PER_ZONE*i],
+					Results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE*i]);
+   			}
+   			printf("\n");
+   			loop++;
+   		}
+
+		/* Wait a few ms to avoid too high polling (function in platform
+		 * file, not in API) */
+   		WaitMs(&(Dev.platform), 5);
+   	}
+
+   	status = vl53l5cx_stop_ranging(&Dev);
+   	printf("Stop ranging continuous\n");
+
+   	printf("End of ULD demo\n");
+   	return status;
 }

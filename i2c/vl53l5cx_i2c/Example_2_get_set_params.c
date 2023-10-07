@@ -61,15 +61,12 @@
 *******************************************************************************/
 
 /***********************************/
-/*   VL53L5CX ULD basic example    */
+/*   VL53L5CX ULD get/set params   */
 /***********************************/
 /*
-* This example is the most basic. It initializes the VL53L5CX ULD, and starts
+* This example shows the possibility of VL53L5CX to get/set params. It
+* initializes the VL53L5CX ULD, set a configuration, and starts
 * a ranging to capture 10 frames.
-*
-* By default, ULD is configured to have the following settings :
-* - Resolution 4x4
-* - Ranging period 1Hz
 *
 * In this example, we also suppose that the number of target per zone is
 * set to 1 , and all output are enabled (see file platform.h).
@@ -98,10 +95,11 @@ int main(void)
 	/*********************************/
 
 	uint8_t 				status, loop, isAlive, isReady, i;
+	uint32_t 				integration_time_ms;
 	VL53L5CX_Configuration 	Dev;			/* Sensor configuration */
 	VL53L5CX_ResultsData 	Results;		/* Results data from VL53L5CX */
 
-
+	
 	/*********************************/
 	/*      Customer platform        */
 	/*********************************/
@@ -112,7 +110,7 @@ int main(void)
 
 	stdio_init_all();
 	sleep_ms(2000);
-	printf("VL53L5CX ULD basic example starting\n");
+	printf("VL53L5CX ULD get set params\n");
 
     i2c_init(TOF_I2C_INST, TOF_I2C_BUADRATE);
     gpio_set_function(TOF_PIN_I2C_SDA, GPIO_FUNC_I2C);
@@ -128,7 +126,7 @@ int main(void)
 	gpio_put(LP_GPIO[0], 1);
 
 	Dev.platform.i2c_instance = TOF_I2C_INST;
-
+	
 	Dev.platform.address = VL53L5CX_DEFAULT_I2C_ADDRESS;
 
 	/* (Optional) Reset sensor toggling PINs (see platform, not in API) */
@@ -138,7 +136,7 @@ int main(void)
 	* from the default one (filled with 0x20 for this example).
 	*/
 	//status = vl53l5cx_set_i2c_address(&Dev, 0x20);
-
+	
 
 	/*********************************/
 	/*   Power on sensor and init    */
@@ -162,6 +160,49 @@ int main(void)
 
 	printf("VL53L5CX ULD ready ! (Version : %s)\n",
 			VL53L5CX_API_REVISION);
+			
+
+	/*********************************/
+	/*        Set some params        */
+	/*********************************/
+
+	/* Set resolution in 8x8. WARNING : As others settings depend to this
+	 * one, it must be the first to use.
+	 */
+	status = vl53l5cx_set_resolution(&Dev, VL53L5CX_RESOLUTION_8X8);
+	if(status)
+	{
+		printf("vl53l5cx_set_resolution failed, status %u\n", status);
+		return status;
+	}
+
+	/* Set ranging frequency to 10Hz.
+	 * Using 4x4, min frequency is 1Hz and max is 60Hz
+	 * Using 8x8, min frequency is 1Hz and max is 15Hz
+	 */
+	status = vl53l5cx_set_ranging_frequency_hz(&Dev, 10);
+	if(status)
+	{
+		printf("vl53l5cx_set_ranging_frequency_hz failed, status %u\n", status);
+		return status;
+	}
+
+	/* Set target order to closest */
+	status = vl53l5cx_set_target_order(&Dev, VL53L5CX_TARGET_ORDER_CLOSEST);
+	if(status)
+	{
+		printf("vl53l5cx_set_target_order failed, status %u\n", status);
+		return status;
+	}
+
+	/* Get current integration time */
+	status = vl53l5cx_get_integration_time_ms(&Dev, &integration_time_ms);
+	if(status)
+	{
+		printf("vl53l5cx_get_integration_time_ms failed, status %u\n", status);
+		return status;
+	}
+	printf("Current integration time is : %d ms\n", integration_time_ms);
 
 
 	/*********************************/
@@ -183,11 +224,11 @@ int main(void)
 		{
 			vl53l5cx_get_ranging_data(&Dev, &Results);
 
-			/* As the sensor is set in 4x4 mode by default, we have a total 
-			 * of 16 zones to print. For this example, only the data of first zone are 
-			 * print */
+			/* As the sensor is set in 8x8 mode, we have a total
+			 * of 64 zones to print. For this example, only the data of
+			 * first zone are print */
 			printf("Print data no : %3u\n", Dev.streamcount);
-			for(i = 0; i < 16; i++)
+			for(i = 0; i < 64; i++)
 			{
 				printf("Zone : %3d, Status : %3u, Distance : %4d mm\n",
 					i,

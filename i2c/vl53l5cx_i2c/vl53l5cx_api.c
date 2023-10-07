@@ -18,7 +18,7 @@
 #include <stdio.h>
 
 // uncomment to print debug information over usb serial
-#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
 # define DEBUG_PRINT(...) printf(__VA_ARGS__)

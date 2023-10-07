@@ -61,16 +61,13 @@
 *******************************************************************************/
 
 /***********************************/
-/*   VL53L5CX ULD basic example    */
+/*   VL53L5CX ULD calibrate Xtalk  */
 /***********************************/
 /*
-* This example is the most basic. It initializes the VL53L5CX ULD, and starts
+* This example shows the possibility of VL53L5CX to calibrate Xtalk. It
+* initializes the VL53L5CX ULD, perform a Xtalk calibration, and starts
 * a ranging to capture 10 frames.
-*
-* By default, ULD is configured to have the following settings :
-* - Resolution 4x4
-* - Ranging period 1Hz
-*
+
 * In this example, we also suppose that the number of target per zone is
 * set to 1 , and all output are enabled (see file platform.h).
 */
@@ -79,6 +76,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "vl53l5cx_api.h"
+#include "vl53l5cx_plugin_xtalk.h"
 
 #include <stdint.h>
 #include "pico/stdlib.h"
@@ -90,9 +88,9 @@
 #define TOF_I2C_BUADRATE 1000*1000
 static const uint8_t LP_GPIO[]={0,1,2,3,4,5,6,7};
 
+
 int main(void)
 {
-
 	/*********************************/
 	/*   VL53L5CX ranging variables  */
 	/*********************************/
@@ -100,7 +98,9 @@ int main(void)
 	uint8_t 				status, loop, isAlive, isReady, i;
 	VL53L5CX_Configuration 	Dev;			/* Sensor configuration */
 	VL53L5CX_ResultsData 	Results;		/* Results data from VL53L5CX */
-
+	
+	/* Buffer containing Xtalk data */
+	uint8_t					xtalk_data[VL53L5CX_XTALK_BUFFER_SIZE];
 
 	/*********************************/
 	/*      Customer platform        */
@@ -112,7 +112,7 @@ int main(void)
 
 	stdio_init_all();
 	sleep_ms(2000);
-	printf("VL53L5CX ULD basic example starting\n");
+	printf("VL53L5CX ULD calibrate Xtalk starting\n");
 
     i2c_init(TOF_I2C_INST, TOF_I2C_BUADRATE);
     gpio_set_function(TOF_PIN_I2C_SDA, GPIO_FUNC_I2C);
@@ -139,7 +139,7 @@ int main(void)
 	*/
 	//status = vl53l5cx_set_i2c_address(&Dev, 0x20);
 
-
+	
 	/*********************************/
 	/*   Power on sensor and init    */
 	/*********************************/
@@ -163,7 +163,33 @@ int main(void)
 	printf("VL53L5CX ULD ready ! (Version : %s)\n",
 			VL53L5CX_API_REVISION);
 
+			
+	/*********************************/
+	/*    Start Xtalk calibration    */
+	/*********************************/
 
+	/* Start Xtalk calibration with a 3% reflective target at 600mm for the
+	 * sensor, using 4 samples.
+	 */
+	printf("Running Xtalk calibration...\n");
+
+	status = vl53l5cx_calibrate_xtalk(&Dev, 3, 4, 600);
+	if(status)
+	{
+		printf("vl53l5cx_calibrate_xtalk failed, status %u\n", status);
+		return status;
+	}else
+	{
+		printf("Xtalk calibration done\n");
+
+		/* Get Xtalk calibration data, in order to use them later */
+		status = vl53l5cx_get_caldata_xtalk(&Dev, xtalk_data);
+
+		/* Set Xtalk calibration data */
+		status = vl53l5cx_set_caldata_xtalk(&Dev, xtalk_data);
+	}
+	
+	
 	/*********************************/
 	/*         Ranging loop          */
 	/*********************************/
