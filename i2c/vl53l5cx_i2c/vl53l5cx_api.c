@@ -15,6 +15,17 @@
 #include "vl53l5cx_api.h"
 #include "vl53l5cx_buffers.h"
 
+#include <stdio.h>
+
+// uncomment to print debug information over usb serial
+#define DEBUG
+
+#ifdef DEBUG
+# define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#else
+# define DEBUG_PRINT(...)
+#endif
+
 /**
  * @brief Inner function, not available outside this file. This function is used
  * to wait for an answer from VL53L5CX sensor.
@@ -39,6 +50,7 @@ static uint8_t _vl53l5cx_poll_for_answer(
 		if(timeout >= (uint8_t)200)	/* 2s timeout */
 		{
 			status |= (uint8_t)VL53L5CX_STATUS_TIMEOUT_ERROR;
+			DEBUG_PRINT("poll for answer timout: temp_buff = %02X, expected_value = %02X\n", p_dev->temp_buffer[pos] & mask, expected_value);
 			break;
 		}else if((size >= (uint8_t)4) 
                          && (p_dev->temp_buffer[2] >= (uint8_t)0x7f))

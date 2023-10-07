@@ -1,25 +1,26 @@
 add_executable(vl53l5cx_i2c)
 
 target_sources(vl53l5cx_i2c PRIVATE 
-        main.c
-        vl53l5cx_pico.c
+        Example_1_ranging_basic.c
         platform.c 
         vl53l5cx_api.c
-        vl53l5cx_plugin_detection_thresholds.c
-        vl53l5cx_plugin_motion_indicator.c
-        vl53l5cx_plugin_xtalk.c
+        # vl53l5cx_plugin_detection_thresholds.c
+        # vl53l5cx_plugin_motion_indicator.c
+        # vl53l5cx_plugin_xtalk.c
         )
 
 target_link_libraries(vl53l5cx_i2c PRIVATE
         pico_stdlib
-        pico_multicore
-        hardware_pio
         hardware_i2c
-        hardware_pwm
-        hardware_irq
+
+        # pico_multicore
+        # hardware_pio
+        # hardware_pwm
+        # hardware_irq
         )
 
 pico_enable_stdio_usb(vl53l5cx_i2c 1)
+pico_enable_stdio_uart(vl53l5cx_i2c 0)
 
 pico_add_extra_outputs(vl53l5cx_i2c)
 
