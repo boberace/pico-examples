@@ -18,8 +18,11 @@ std_msgs__msg__Int32 msg;
 void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
     rcl_ret_t ret = rcl_publish(&publisher, &msg, NULL);
-    msg.data++;
+    if (ret == RCL_RET_OK){
+        msg.data++;
+    }
 }
+
 
 int main()
 {
@@ -77,13 +80,13 @@ int main()
     rclc_executor_add_timer(&executor, &timer);
 
     gpio_put(LED_PIN, 1);
-    absolute_time_t pt = get_absolute_time();
+    uint64_t pt = to_us_since_boot(get_absolute_time());
     uint led_state = 1;
     msg.data = 0;
     while (true)
     {
         rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
-        absolute_time_t ct = get_absolute_time();
+        uint64_t ct = to_us_since_boot(get_absolute_time());
         if(ct - pt >= 500000){  
             pt = ct;
             led_state = led_state?0:1;

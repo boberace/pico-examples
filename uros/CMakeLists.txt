@@ -1,4 +1,6 @@
 if (NOT PICO_NO_HARDWARE)
-    add_subdirectory(usb_example)
-    add_subdirectory(wifi_example)
+    add_subdirectory(bno085_uros)
+    add_subdirectory(vl53l5cx_uros)
+    add_subdirectory(usb_example_uros)
+    add_subdirectory(wifi_example_uros)
 endif ()

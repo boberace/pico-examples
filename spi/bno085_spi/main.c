@@ -10,7 +10,7 @@
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 #include "hardware/spi.h"
-#include "bno085_spi.hpp"
+#include "bno085_spi.h"
 
 #define PIN_BNO085_MISO 12
 #define PIN_BNO085_CS   13
@@ -41,16 +41,10 @@
 #define PRINT(...) printf(__VA_ARGS__)
 #endif
 
-bno085_spi bno085(PIN_BNO085_CS, PIN_BNO085_RST, PIN_BNO085_INT);
 
 sh2_SensorValue_t sensor_value;
 
-void setReports(void) {
-  PRINT("Setting desired reports\r\n");
-  if (! bno085.enableReport(SH2_ROTATION_VECTOR, 10)) { //sh2.h line 93, RM: 2.2.4 Rotation Vector
-    PRINT("Could not enable rotation vector\r\n");
-  }
-}
+
 
 uint setup_spia(){
 
@@ -87,18 +81,8 @@ int main() {
     };
     PRINT("setup_spi baud rate %d\r\n", spi_ret);
 
-    if(bno085.connect_spi(SPI_A_INST)) PRINT(" bno0855 has initialized\r\n");
-    else PRINT(" bno0855 NOT initialize\r\n");
 
-    for (int n = 0; n < bno085.prodIds.numEntries; n++) { // sh2.h line 60
-    PRINT("Part %d\n", bno085.prodIds.entry[n].swPartNumber);
-    PRINT(": Version %d.%d.%d\n",  bno085.prodIds.entry[n].swVersionMajor, 
-                                    bno085.prodIds.entry[n].swVersionMinor, 
-                                    bno085.prodIds.entry[n].swVersionPatch);
-    PRINT(" Build %d\n", bno085.prodIds.entry[n].swBuildNumber);
-    }  
-
-    setReports();   
+  
     uint counter = 0;
     while(true){    
 
@@ -107,25 +91,7 @@ int main() {
         // PRINT("\033[A\33[2K\rbno_085, %i\n", counter);
 
         counter++;
-        if (bno085.getSensorEvent(&sensor_value)) {
 
-            switch (sensor_value.sensorId) {
-            
-            case SH2_ROTATION_VECTOR:
-            PRINT("Rotation Vector:  i:%f, j:%f, k:%f,  r:%f\r\n",   sensor_value.un.gameRotationVector.i,
-                                                                    sensor_value.un.gameRotationVector.j,
-                                                                    sensor_value.un.gameRotationVector.k,
-                                                                    sensor_value.un.gameRotationVector.real);
-            break;
-            }
-        } else {
-            PRINT(".");
-        }
-
-        if (bno085.wasReset()) {
-            PRINT("sensor was reset \r\n");
-            setReports();
-        }
 
     }
     

@@ -93,7 +93,10 @@ int32_t ad5593r_write_dac(struct ad5592r_dev *dev, uint8_t chan,
 	data[1] = (value >> 8) & 0xF ;
 	data[2] = value & 0xFF;
 
-	return i2c_write(dev->i2c, data, sizeof(data), STOP_BIT);
+	if(i2c_write(dev->i2c, data, sizeof(data), STOP_BIT) == 3){
+		return 0;
+	}
+	return -1;
 }
 
 /**

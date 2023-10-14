@@ -286,4 +286,6 @@ void kxtj3_i2c::_debug_print_writable_regs(){
     DEBUG_PRINT("DP KXTJ3_WAKEUP_THRESHOLD_L, \t 0x%02x, 0b", reg);
     _debug_print_reg_binary(reg);
 
+    DEBUG_PRINT("ret %i\n", ret);
+
 }

@@ -35,12 +35,12 @@ int main() {
     }
 
     printf("\n");
-    absolute_time_t pt = get_absolute_time();
+    uint32_t pt = to_ms_since_boot(get_absolute_time());
     while(true){     
 
 
-    absolute_time_t ct = get_absolute_time();
-    if(ct - pt >= 500000){  
+    uint32_t ct = to_ms_since_boot(get_absolute_time());
+    if(ct - pt >= 500){  
         pt = ct;
         printf("\033[A\033[2K\rkxtj3 demo running %llu seconds since boot\n", ct/1000000);
 

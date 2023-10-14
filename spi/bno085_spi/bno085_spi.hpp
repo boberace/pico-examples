@@ -1,6 +1,9 @@
 #ifndef BNO085_SPI_H
 #define BNO085_SPI_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "sh2.h"
 #include "sh2_SensorValue.h"
@@ -9,6 +12,9 @@
 #include "sh2_util.h"
 #include "shtp.h"
 
+#ifdef __cplusplus
+}
+#endif
 
 #include <stdio.h>
 #include "pico/stdlib.h"
@@ -16,10 +22,23 @@
 
 #include "hardware/spi.h"
 
+class bno085_spi{
 
+    public:
+    bno085_spi(uint pin_cs, uint pin_rst = 0xFF, uint pin_int = 0xFF);
+    ~bno085_spi();  
+ 
+    bool connect_spi(spi_inst_t *spi_instance);
+    bool enableReport(sh2_SensorId_t sensorId, float frequency);
+    bool getSensorEvent(sh2_SensorValue_t *value);
+    bool wasReset(void);
+    sh2_ProductIds_t prodIds; ///< The product IDs returned by the sensor
 
-extern sh2_ProductIds_t prodIds; ///< The product IDs returned by the sensor
+    protected:
 
+    sh2_Hal_t _sh2_hal; ///< The struct representing the SH2 Hardware Abstraction Layer
+
+};
 
 // -------------------------------------------------------------------------
 

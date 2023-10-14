@@ -7,7 +7,7 @@ TP: Sensor Hub Transport Protocol
 
 */
 
-#include "bno085_spi.hpp"
+#include "bno085_spi.h"
 #include <inttypes.h>
 
 // #define DEBUG // comment out to disable debug prints                         
@@ -39,7 +39,10 @@ uint _PIN_BNO085_CS, _PIN_BNO085_RST, _PIN_BNO085_INT;
 static sh2_SensorValue_t *_sensor_value = NULL;
 static bool _reset_occurred = false;
 
-bno085_spi::bno085_spi(uint pin_cs, uint pin_rst, uint pin_int){
+sh2_Hal_t _sh2_hal; ///< The struct representing the SH2 Hardware Abstraction Layer
+
+bool bno085_connect_spi(spi_inst_t *spi_instance, uint pin_cs, uint pin_rst, uint pin_int){
+
     _PIN_BNO085_CS = pin_cs;
     _PIN_BNO085_RST = pin_rst;
     _PIN_BNO085_INT = pin_int;
@@ -61,13 +64,6 @@ bno085_spi::bno085_spi(uint pin_cs, uint pin_rst, uint pin_int){
         gpio_set_dir(_PIN_BNO085_CS, GPIO_OUT);
         gpio_put(_PIN_BNO085_CS, 1);
     }
-}
-
-bno085_spi::~bno085_spi(){
-  // todo
-}
-
-bool bno085_spi::connect_spi(spi_inst_t *spi_instance){
 
     _SPI_BNO085 = spi_instance;
 
@@ -106,52 +102,8 @@ bool bno085_spi::connect_spi(spi_inst_t *spi_instance){
     return true;
 }
 
-bool bno085_spi::enableReport(sh2_SensorId_t sensorId, float frequency) {
 
-  uint32_t interval_us = (uint32_t)(1000000 / frequency);
-  static sh2_SensorConfig_t config;
 
-  // These sensor options are disabled or not used in most cases
-  config.changeSensitivityEnabled = false;
-  config.wakeupEnabled = false;
-  config.changeSensitivityRelative = false;
-  config.alwaysOnEnabled = false;
-  config.changeSensitivity = 0;
-  config.batchInterval_us = 0;
-  config.sensorSpecific = 0;
-
-  config.reportInterval_us = interval_us;
-  int status = sh2_setSensorConfig(sensorId, &config);
-
-  if (status != SH2_OK) {
-    return false;
-  }
-
-  return true;
-}
-
-bool bno085_spi::getSensorEvent(sh2_SensorValue_t *value) {
-
-  _sensor_value = value;
-
-  _sensor_value->timestamp = 0;
-
-  sh2_service();
-
-  if (_sensor_value->timestamp == 0 && _sensor_value->sensorId != SH2_GYRO_INTEGRATED_RV) {
-    // no new events
-    return false;
-  }
-
-  return true;
-}
-
-bool bno085_spi::wasReset(void) {
-  bool x = _reset_occurred;
-  _reset_occurred = false;
-
-  return x;
-}
 // 
 
 static inline void cs_select() {

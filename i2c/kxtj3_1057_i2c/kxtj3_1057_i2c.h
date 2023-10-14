@@ -138,7 +138,7 @@ class kxtj3_i2c{
                 uint8_t i2c_address = 0x0E, 
                 uint pin_int = 0xFF, 
                 uint pin_rst = 0xFF);
-    ~kxtj3_i2c();
+    // ~kxtj3_i2c();
 
     int begin( KXTJ3_data_rate_t data_rate = DATA_RATE_7,
                 KXTJ3_accel_range_t accel_range = ACCEL_8G,
