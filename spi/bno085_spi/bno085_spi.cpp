@@ -11,7 +11,7 @@ TP: Sensor Hub Transport Protocol
 #include <inttypes.h>
 
 // #define DEBUG // comment out to disable debug prints                         
-#define PRINT_PROBE_UART // comment out to print to serial console
+// #define PRINT_PROBE_UART // comment out to print to serial console
 
 #ifdef DEBUG
 #define UART_ID uart1

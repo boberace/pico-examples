@@ -12,24 +12,33 @@
 #include "hardware/spi.h"
 #include "bno085_spi.hpp"
 
-#define PIN_BNO085_MISO 12
-#define PIN_BNO085_CS   13
-#define PIN_BNO085_SCK  10
-#define PIN_BNO085_MOSI 11
-#define PIN_BNO085_INT  14
-#define PIN_BNO085_RST  15
+#define PIN_BNO085_MISO 16
+#define PIN_BNO085_CS   17
+#define PIN_BNO085_SCK  18
+#define PIN_BNO085_MOSI 19
+#define PIN_BNO085_INT  26
+#define PIN_BNO085_RST  14
 
-#define SPI_A_BAUD_RATE  1000 * 1000
-#define SPI_A_INST spi1
+#define SPI_A_BAUD_RATE  500 * 1000
+#define SPI_A_INST spi0
+
+
+// #define PRINT_PROBE_UART // uncomment to print to uart
+
+#ifdef PRINT_PROBE_UART
 
 #define UART_A_ID uart1
 #define UART_A_BAUD_RATE 115200
 #define UART_A_TX_PIN 8
 #define UART_A_RX_PIN 9
 
-#define PRINT_PROBE_UART // comment out to print to uart
+uint setup_uart() {
+    uint uart_ret = uart_init(UART_A_ID, UART_A_BAUD_RATE);
+    gpio_set_function(UART_A_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART_A_RX_PIN, GPIO_FUNC_UART);
+    return uart_ret;
+}
 
-#ifdef PRINT_PROBE_UART
 #define BUFFER_SIZE 256
 #define PRINT(...)                     \
     do {                               \
@@ -63,22 +72,18 @@ uint setup_spia(){
 
 }
 
-uint setup_uart() {
-    uint uart_ret = uart_init(UART_A_ID, UART_A_BAUD_RATE);
-    gpio_set_function(UART_A_TX_PIN, GPIO_FUNC_UART);
-    gpio_set_function(UART_A_RX_PIN, GPIO_FUNC_UART);
-    return uart_ret;
-}
-
 int main() {
     stdio_init_all();
     sleep_ms(2000);
+
+    #ifdef PRINT_PROBE_UART
     uint uart_ret = setup_uart();
     if(abs((int)(uart_ret - UART_A_BAUD_RATE)) > 0.02*UART_A_BAUD_RATE){
         PRINT("UART setup failed %d\r\n", uart_ret);
         return 1;
     };
     PRINT("UART setup baud rate %d\r\n", uart_ret);
+    #endif
 
     int spi_ret = setup_spia();
     if(abs((int)(SPI_A_BAUD_RATE-spi_ret)) > 0.02*SPI_A_BAUD_RATE ){
@@ -88,7 +93,7 @@ int main() {
     PRINT("setup_spi baud rate %d\r\n", spi_ret);
 
     if(bno085.connect_spi(SPI_A_INST)) PRINT(" bno0855 has initialized\r\n");
-    else PRINT(" bno0855 NOT initialize\r\n");
+    else PRINT(" bno0855 NOT initialized\r\n");
 
     for (int n = 0; n < bno085.prodIds.numEntries; n++) { // sh2.h line 60
     PRINT("Part %d\n", bno085.prodIds.entry[n].swPartNumber);

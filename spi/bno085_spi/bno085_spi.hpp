@@ -1,9 +1,9 @@
 #ifndef BNO085_SPI_H
 #define BNO085_SPI_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+// #ifdef __cplusplus
+// extern "C" {
+// #endif
 
 #include "sh2.h"
 #include "sh2_SensorValue.h"
@@ -12,9 +12,9 @@ extern "C" {
 #include "sh2_util.h"
 #include "shtp.h"
 
-#ifdef __cplusplus
-}
-#endif
+// #ifdef __cplusplus
+// }
+// #endif
 
 #include <stdio.h>
 #include "pico/stdlib.h"
