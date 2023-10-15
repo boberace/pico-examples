@@ -1,5 +1,5 @@
-#ifndef CINDEX_H
-#define CINDEX_H
+#ifndef CINDEX_HPP
+#define CINDEX_HPP
 
 class cindex {
 private:
@@ -42,4 +42,4 @@ public:
 
 };
 
-#endif // CINDEX_H
+#endif // CINDEX_HPP

@@ -1,4 +1,4 @@
-#include "cindex.h"
+#include "cindex.hpp"
 
 // Constructor: Initializes the cyclic index with a given threshold.
 // If the provided threshold is less than 2, it defaults to 2.
@@ -6,7 +6,7 @@ cindex::cindex(unsigned int x = 2) : _top{x < 2 ? 2 : x}, _idx{0} {}
 
 // Helper function to wrap the index within the range [0, _top)
 void cindex::wrap() {
-    _idx %= _top;
+    if(_idx >= _top) _idx %= _top;
 }
 
 // Implicit conversion to unsigned int: Returns the current index value.

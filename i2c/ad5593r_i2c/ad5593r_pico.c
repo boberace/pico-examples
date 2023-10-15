@@ -20,10 +20,7 @@ const struct ad5592r_rw_ops ad5593r_rw_ops = {
 };
 
 
-i2c_desc  i2c_desc_user = {
-    .i2c_instance = i2c0,
-    .slave_address = 0x10
-};
+i2c_desc  i2c_desc_user;
 
 struct ad5592r_dev ad5592r_dev_user = {
 	.ops = &ad5593r_rw_ops,
@@ -60,19 +57,11 @@ struct ad5592r_init_param ad5592r_user_param = {
 	.int_ref = false
 };
 
-void setup_i2c0(void){
+int32_t ad5593r_init_pico(i2c_inst_t *i2c, uint8_t slave_address){
 
-    i2c_init(i2c0, I2C0_BUADRATE);
-    gpio_set_function(PIN_I2C0_SDA, GPIO_FUNC_I2C);
-    gpio_set_function(PIN_I2C0_SCL, GPIO_FUNC_I2C);
-    gpio_pull_up(PIN_I2C0_SDA);
-    gpio_pull_up(PIN_I2C0_SCL);
-    
-}
+		i2c_desc_user.i2c_instance = i2c;
+		i2c_desc_user.slave_address = slave_address;
 
-int32_t ad5593r_init_pico(void){
-
-        setup_i2c0();
         int32_t ret = ad5593r_init(&ad5592r_dev_user, &ad5592r_user_param); 
 		if(ret != 0){
 			DEBUG_PRINT("Error ad5593r_init_pico %i\n", ret);
