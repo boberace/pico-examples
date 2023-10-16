@@ -11,17 +11,29 @@ TP: Sensor Hub Transport Protocol R 1.7
 
 // uncomment to print debug information over usb serial
 // #define DEBUG
+#define PRINT_PROBE_UART
 
 #ifdef DEBUG
-# define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define UART_ID uart1
+#ifdef PRINT_PROBE_UART
+#define BUFFER_SIZE 256
+#define DEBUG_PRINT(...)                     \
+    do {                               \
+        char buffer[BUFFER_SIZE];      \
+        snprintf(buffer, sizeof(buffer), __VA_ARGS__); \
+        uart_puts(UART_ID, buffer);      \
+    } while (0)
 #else
-# define DEBUG_PRINT(...)
+#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#endif
+#else
+#define DEBUG_PRINT(...)
 #endif
 
 i2c_inst_t *_I2C_BNO085;
 
 int16_t _ret = 0;
-int16_t _CARGO_SIZE = 128; // arbitrarily set, can be up to (2^15 - 4), 
+// int16_t _CARGO_SIZE = 128; // arbitrarily set, can be up to (2^15 - 4), 
 
 uint _PIN_BNO085_RST, _PIN_BNO085_INT;
 uint8_t _BNO085_I2C_ADDR;
@@ -37,12 +49,15 @@ bno085_i2c::bno085_i2c(uint pin_rst, uint pin_int){
     if(_PIN_BNO085_RST != 0xFF){
         gpio_init(_PIN_BNO085_RST);
         gpio_set_dir(_PIN_BNO085_RST, GPIO_OUT);
+        gpio_put(_PIN_BNO085_RST, 1);
     }
     
     if(_PIN_BNO085_INT != 0xFF){   
         gpio_init(_PIN_BNO085_INT);
         gpio_set_dir(_PIN_BNO085_INT, GPIO_IN);
+        gpio_pull_up(_PIN_BNO085_INT);
     }
+
 }
 
 bool bno085_i2c::connect_i2c(i2c_inst_t *i2c_instance, uint8_t i2c_address){
@@ -56,11 +71,14 @@ bool bno085_i2c::connect_i2c(i2c_inst_t *i2c_instance, uint8_t i2c_address){
     uint8_t dummy;
     uint16_t _ret = i2c_read_blocking(_I2C_BNO085, _BNO085_I2C_ADDR, &dummy, 1, false);
     if(_ret < 1){
-         printf(" BNO085 will not connect\n");
+         DEBUG_PRINT(" BNO085 will not connect\r\n");
          return false;
-    } DEBUG_PRINT("i2c_read_blocking dummy test if connected %d\n", _ret);
+    } DEBUG_PRINT("i2c_read_blocking dummy test is connected %d\r\n", _ret);
 
-    hal_hardwareReset();
+    if(hal_reset() == 0){
+        DEBUG_PRINT("---return 0 early BNO085 reset failed\r\n");
+        return false;
+    }  
 
     // setup sh2 hal pointers
     _sh2_hal.open = i2c_open;
@@ -74,13 +92,13 @@ bool bno085_i2c::connect_i2c(i2c_inst_t *i2c_instance, uint8_t i2c_address){
     status = sh2_open(&_sh2_hal, hal_callback, NULL);
     if (status != SH2_OK) { 
         return false;
-    } DEBUG_PRINT("---------------------------------------------------- sh2_open \n");
+    } DEBUG_PRINT("---------------------------------------------------- sh2_open \r\n");
 
     memset(&prodIds, 0, sizeof(prodIds));
     status = sh2_getProdIds(&prodIds);
     if (status != SH2_OK) {
         return false;
-    } DEBUG_PRINT("------------------------------------------------ sh2_getProdIds \n");
+    } DEBUG_PRINT("------------------------------------------------ sh2_getProdIds \r\n");
 
     // Register sensor listener
     sh2_setSensorCallback(sensorHandler, NULL);
@@ -137,106 +155,96 @@ bool bno085_i2c::wasReset(void) {
 
 // -------------------------------------------------------------------------
 
+static int hal_wait_for_int(void) {
+  DEBUG_PRINT("```hal_wait_for_int called\r\n");
+  for (int i = 0; i < 500; i++) {
+    if (!gpio_get(_PIN_BNO085_INT)){
+        DEBUG_PRINT("~~~hal_wait_for_int INT triggered\r\n");
+        return true;
+    }
+    DEBUG_PRINT(".");
+    sleep_ms(1);
+  }
+  DEBUG_PRINT("--- hal_wait_for_int Timed out!\r\n");
+  hal_reset();
+
+  return false;
+}
+
 static int i2c_open(sh2_Hal_t *self){
-    DEBUG_PRINT("************************************ i2c_open \n");
-    uint8_t shtp_header[4]; // DS: 1.3.1 SHTP
-    uint8_t shtp_cargo[_CARGO_SIZE]; 	
-    // send a software reset = { Length LSB, Length LSB, Channel, SeqNum, data }
-    uint8_t softreset_pkt[5] = { 5, 0, 1, 0, 1}; // DS: Figure 1-27: 1 – reset
-    _ret = i2c_write_blocking(_I2C_BNO085,_BNO085_I2C_ADDR, softreset_pkt, 5, false );
-        DEBUG_PRINT("i2c_write_blocking softreset_pkt %d\n", _ret); 
-    if(_ret < 1) return -1;
+    DEBUG_PRINT("************************************ i2c_open \r\n"); 
 
-    _ret = i2c_read_blocking(_I2C_BNO085,_BNO085_I2C_ADDR, shtp_header, 4, false );
-        DEBUG_PRINT("i2c_read_blocking shtp_header %d\n", _ret);
-    if(_ret < 1) return -1;
-    uint16_t length = (shtp_header[1] << 8) |  shtp_header[0];
-    length &= ~(1 << 15);
-        DEBUG_PRINT("shtp_header 0 : 0x%02x, 0b%08b\n", shtp_header[0], shtp_header[0]);
-        DEBUG_PRINT("shtp_header 1 : 0x%02x, 0b%08b\n", shtp_header[1], shtp_header[1]);
-        DEBUG_PRINT("shtp_header 2 : 0x%02x, 0b%08b\n", shtp_header[2], shtp_header[2]);
-        DEBUG_PRINT("shtp_header 3 : 0x%02x, 0b%08b\n", shtp_header[3], shtp_header[3]);
-        DEBUG_PRINT("length %d\n", length);
-    sleep_ms(100);
-    i2c_read(self, shtp_cargo, length, NULL);
-    sleep_ms(100);
-
+   if(hal_reset() == 0){
+        DEBUG_PRINT("---return 0 early BNO085 reset failed\r\n");
+        return 1;
+    }  
     return 0;
 }
 
 static void i2c_close(sh2_Hal_t *self){
-    DEBUG_PRINT("************************************ i2c_close \n");
+    DEBUG_PRINT("************************************ i2c_close \r\n");
 }
 
 static int i2c_read(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len, uint32_t *t_us){
-    DEBUG_PRINT("************************************ i2c_read \n");
+    DEBUG_PRINT("************************************ i2c_read %i \r\n", len);
+
+    *t_us = to_us_since_boot(get_absolute_time());
+
     uint8_t shtp_header[4]; // DS: 1.3.1 SHTP	
-    _ret = i2c_read_blocking(_I2C_BNO085,_BNO085_I2C_ADDR, shtp_header, 4, false );
-        DEBUG_PRINT("i2c_read_blocking shtp_header %d\n", _ret);
-    if(_ret != 4) return 0;
 
-    uint16_t length = (shtp_header[1] << 8) |  shtp_header[0];
-    length &= ~(1 << 15);
-        DEBUG_PRINT("shtp_header 0 : 0x%02x, 0b%08b\n", shtp_header[0], shtp_header[0]);
-        DEBUG_PRINT("shtp_header 1 : 0x%02x, 0b%08b\n", shtp_header[1], shtp_header[1]);
-        DEBUG_PRINT("shtp_header 2 : 0x%02x, 0b%08b\n", shtp_header[2], shtp_header[2]);
-        DEBUG_PRINT("shtp_header 3 : 0x%02x, 0b%08b\n", shtp_header[3], shtp_header[3]);
-        DEBUG_PRINT("length %d\n", length);
-  
-    if(length){ // no zero reads    
-
-        if(length <= _CARGO_SIZE){ // fill the cargo
-            
-            if(length > len) length = len;  // do not get more than asked if more is available
-
-            _ret = i2c_read_blocking(_I2C_BNO085,_BNO085_I2C_ADDR, pBuffer, length, false);                
-                DEBUG_PRINT("i2c_read_blocking pBuffer %d\n", _ret);
-            if(_ret != length) return 0;
-
-        } else { // fill up the cargo, flush the rest
-
-            uint8_t flush_cargo[_CARGO_SIZE];
-
-            _ret = i2c_read_blocking(_I2C_BNO085,_BNO085_I2C_ADDR, pBuffer, _CARGO_SIZE, false);                
-                DEBUG_PRINT("i2c_read_blocking pBuffer %d\n", _ret);   
-            if(_ret != _CARGO_SIZE) return 0;
-            
-            length -= _CARGO_SIZE;
-
-            while(length > 0){
-                    if(length > _CARGO_SIZE){ 
-                        _ret = i2c_read_blocking(_I2C_BNO085,_BNO085_I2C_ADDR, flush_cargo, _CARGO_SIZE, false);
-                            DEBUG_PRINT("i2c_read_blocking flush_cargo %d\n", _ret); 
-                        if(_ret != _CARGO_SIZE) return 0;
-                        length -= _CARGO_SIZE;
-                    } else {
-                        _ret = i2c_read_blocking(_I2C_BNO085,_BNO085_I2C_ADDR, flush_cargo, length, false);
-                            DEBUG_PRINT("i2c_read_blocking flush_cargo %d\n", _ret);
-                        if(_ret != length) return 0;
-                        length = 0;
-                    }
-            }
-
+    if(_PIN_BNO085_INT != 0xFF){ 
+        if (!hal_wait_for_int()) {
+            DEBUG_PRINT("---return 0 early  i2c_read ::  hal_wait_for_int timed out!\r\n");
+            return 0;
         }
     }
-     *t_us = to_us_since_boot(get_absolute_time());
+    _ret = i2c_read_blocking(_I2C_BNO085,_BNO085_I2C_ADDR, shtp_header, 4, false );        
+    if(_ret != 4){
+        DEBUG_PRINT("---return 0 early i2c_read i2c_read_blocking shtp_header 4 != %i\r\n", _ret);
+        return 0;
+    }
+    uint16_t length = (shtp_header[1] << 8) |  shtp_header[0];
+    length &= 0x7FFF;
+        DEBUG_PRINT("shtp_header 0 : 0x%02x, 0b%08b\r\n", shtp_header[0], shtp_header[0]);
+        DEBUG_PRINT("shtp_header 1 : 0x%02x, 0b%08b\r\n", shtp_header[1], shtp_header[1]);
+        DEBUG_PRINT("shtp_header 2 : 0x%02x, 0b%08b\r\n", shtp_header[2], shtp_header[2]);
+        DEBUG_PRINT("shtp_header 3 : 0x%02x, 0b%08b\r\n", shtp_header[3], shtp_header[3]);
+        DEBUG_PRINT("length %d\r\n", length);
+
+    if(length > len){
+        DEBUG_PRINT("---return 0 early shtp_header length %i > len %i\r\n", length, len);
+        return 0;
+    }
+
+    if(_PIN_BNO085_INT != 0xFF){ 
+        if (!hal_wait_for_int()) {
+            DEBUG_PRINT("---return 0 early  i2c_read ::  hal_wait_for_int timed out!\r\n");
+            return 0;
+        }
+    }
+
+    _ret = i2c_read_blocking(_I2C_BNO085,_BNO085_I2C_ADDR, pBuffer, length, false);             
+    if(_ret != length) {
+        DEBUG_PRINT("---return 0 early i2c_read i2c_read_blocking pBuffer %i != %i\r\n", _ret, length);
+        return 0;
+    }
 
     return length;
 }
 
 static int i2c_write(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len){
-    DEBUG_PRINT("************************************ i2c_write \n");
+    DEBUG_PRINT("************************************ i2c_write \r\n");
     uint16_t length = (len > SH2_HAL_MAX_TRANSFER_OUT)?SH2_HAL_MAX_TRANSFER_OUT:len;
 
     _ret = i2c_write_blocking(_I2C_BNO085,_BNO085_I2C_ADDR, pBuffer, length, false );
-        DEBUG_PRINT("i2c_write_blocking softreset_pkt %d\n", _ret);
+        DEBUG_PRINT("i2c_write_blocking softreset_pkt %d\r\n", _ret);
     if(_ret != length) return 0;
 
     return _ret;
 }
 
 uint32_t getTimeUs(sh2_Hal_t *self){
-    DEBUG_PRINT("************************************ getTimeUs \n");
+    DEBUG_PRINT("************************************ getTimeUs \r\n");
     return to_us_since_boot(get_absolute_time());
 }
 
@@ -246,7 +254,7 @@ static void sensorHandler(void *cookie, sh2_SensorEvent_t *event) {
 
   _ret = sh2_decodeSensorEvent(_sensor_value, event);
   if (_ret != SH2_OK) {
-    printf("BNO08x - Error decoding sensor event");
+    DEBUG_PRINT("BNO08x - Error decoding sensor event\r\n");
     _sensor_value->timestamp = 0;
     return;
   }
@@ -261,13 +269,36 @@ static void hal_callback(void *cookie, sh2_AsyncEvent_t *pEvent) {
 }
 
 static void hal_hardwareReset(void) {
-  if (_PIN_BNO085_RST != 0xFF) {
-    gpio_put(_PIN_BNO085_RST, 1);
-    sleep_ms(10);
-    gpio_put(_PIN_BNO085_RST, 0);
-    sleep_ms(10);
-    gpio_put(_PIN_BNO085_RST, 1);
-    sleep_ms(10);  
-  }
+    DEBUG_PRINT("--- hal_softwareReset called \r\n");
+    if (_PIN_BNO085_RST != 0xFF) {
+        gpio_put(_PIN_BNO085_RST, 1);
+        sleep_ms(10);
+        gpio_put(_PIN_BNO085_RST, 0);
+        sleep_ms(10);
+        gpio_put(_PIN_BNO085_RST, 1);
+        sleep_ms(10);  
+    }
 }
 
+static int hal_softwareReset(void){
+
+    uint8_t softreset_pkt[5] = { 5, 0, 1, 0, 1}; // DS: Figure 1-27: 1 – reset
+    for(int i = 0; i < 5; i++){
+        _ret = i2c_write_blocking(_I2C_BNO085,_BNO085_I2C_ADDR, softreset_pkt, 5, false );         
+        if(_ret == 5){
+            DEBUG_PRINT("--- hal_softwareReset occured \r\n");
+            return 1;
+        } 
+    }
+    DEBUG_PRINT("---return 0 early hal_softwareReset failed %i\r\n", _ret);
+    return 0;    
+}
+
+static int hal_reset(void) {
+  if (_PIN_BNO085_RST != 0xFF) {
+    hal_hardwareReset();
+    return 1;
+  } else {
+    return hal_softwareReset();
+  }
+}

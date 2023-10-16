@@ -5,7 +5,6 @@
 extern "C" {
 #endif
 
-#include "sh2.h"
 #include "sh2_SensorValue.h"
 #include "sh2_err.h"
 
@@ -23,7 +22,7 @@ class bno085_i2c{
 
     public:
     bno085_i2c(uint pin_rst = 0xFF, uint pin_int = 0xFF);
-    ~bno085_i2c();  
+    // ~bno085_i2c();  
 
     bool connect_i2c(i2c_inst_t *i2c_instance, uint8_t i2c_address = 0x4A);
     bool enableReport(sh2_SensorId_t sensorId, float frequency);
@@ -40,6 +39,7 @@ class bno085_i2c{
 
 // -------------------------------------------------------------------------
 
+static int hal_wait_for_int(void);
 static int i2c_open(sh2_Hal_t *self);
 static void i2c_close(sh2_Hal_t *self);
 static int i2c_read(sh2_Hal_t *self, uint8_t *pBuffer, unsigned len, uint32_t *t_us);
@@ -48,5 +48,7 @@ static uint32_t getTimeUs(sh2_Hal_t *self);
 static void hal_callback(void *cookie, sh2_AsyncEvent_t *pEvent);
 static void sensorHandler(void *cookie, sh2_SensorEvent_t *event);
 static void hal_hardwareReset(void);
+static int hal_softwareReset(void);
+static int hal_reset(void);
 
 #endif
