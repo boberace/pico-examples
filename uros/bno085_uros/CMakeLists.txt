@@ -4,7 +4,7 @@ else()
         message(STATUS "PICO_UROS_PATH set to $ENV{PICO_UROS_PATH}")
 endif()
 
-set(IMU_PATH $ENV{PICO_EXAMPLES_PATH}/spi/bno085_spi)
+set(IMU_PATH $ENV{PICO_EXAMPLES_PATH}/i2c/bno085_i2c)
 
 include_directories($ENV{PICO_UROS_PATH})
 include_directories(${IMU_PATH})
@@ -14,7 +14,7 @@ project(bno085_uros_usb C CXX ASM)
 add_executable(bno085_uros_usb
     bno085_uros_usb.cpp
     $ENV{PICO_UROS_PATH}/pico_uart_transport.c
-    ${IMU_PATH}/bno085_spi.cpp
+    ${IMU_PATH}/bno085_i2c.cpp
     ${IMU_PATH}/sh2.c
     ${IMU_PATH}/sh2_SensorValue.c
     ${IMU_PATH}/sh2_util.c
@@ -28,7 +28,9 @@ target_link_directories(bno085_uros_usb PRIVATE
 target_link_libraries(bno085_uros_usb
     pico_stdlib
     microros
-    hardware_spi
+    hardware_i2c
+    pico_multicore
+    pico_cyw43_arch_none # if using pico-w - need the led driver
 )
 
 target_include_directories(bno085_uros_usb PUBLIC

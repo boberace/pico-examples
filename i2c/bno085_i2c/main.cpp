@@ -14,10 +14,10 @@ TP: Sensor Hub Transport Protocol R 1.7
 #include <string.h>
 
 // define i2c pararmeters and pins
-#define I2C0_BUADRATE 400*1000
-#define PIN_I2C0_SDA 16 
-#define PIN_I2C0_SCL 17 
-i2c_inst_t *bno085_i2c_instance = i2c0;
+#define I2CA_BUADRATE 400*1000
+#define PIN_I2CA_SDA 16 
+#define PIN_I2CA_SCL 17 
+#define I2CA_INSTANCE i2c0
 
 // define interrupt and reset pins
 #define PIN_BNO085_INT 26 
@@ -62,12 +62,13 @@ void setReports(void) {
   }
 }
 
-void setup_i2c0(void){
-    i2c_init(i2c0, I2C0_BUADRATE);
-    gpio_set_function(PIN_I2C0_SDA, GPIO_FUNC_I2C);
-    gpio_set_function(PIN_I2C0_SCL, GPIO_FUNC_I2C);
-    gpio_pull_up(PIN_I2C0_SDA);
-    gpio_pull_up(PIN_I2C0_SCL);
+int setup_i2cA(void){
+    int ret = i2c_init(I2CA_INSTANCE, I2CA_BUADRATE);
+    gpio_set_function(PIN_I2CA_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(PIN_I2CA_SCL, GPIO_FUNC_I2C);
+    gpio_pull_up(PIN_I2CA_SDA);
+    gpio_pull_up(PIN_I2CA_SCL);
+    return ret;
 }
 
 int main() {   
@@ -83,10 +84,15 @@ int main() {
     };
     PRINT("UART setup baud rate %d\r\n", uart_ret);
     #endif
+    
+    int i2c_ret = setup_i2cA();
+    if(abs(int(I2CA_BUADRATE-i2c_ret)) > 0.02*I2CA_BUADRATE ){
+        PRINT("I2CA setup failed %d\r\n", i2c_ret);
+        return 1;
+    }
+    PRINT("setup_i2cA baud rate %d\r\n", i2c_ret);
 
-    setup_i2c0();
-
-    if(bno085.connect_i2c(bno085_i2c_instance)) PRINT(" bno0855 has initialized\r\n");
+    if(bno085.connect_i2c(I2CA_INSTANCE)) PRINT(" bno0855 has initialized\r\n");
     else PRINT(" bno0855 NOT initialized\r\n");
 
     for (int n = 0; n < bno085.prodIds.numEntries; n++) { // sh2.h line 60

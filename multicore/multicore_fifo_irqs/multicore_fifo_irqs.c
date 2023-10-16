@@ -48,6 +48,7 @@ void core1_entry() {
 
 int main() {
     stdio_init_all();
+    sleep_ms(2000);
     printf("Hello, multicore_fifo_irqs!\n");
 
     // We MUST start the other core before we enabled FIFO interrupts.
