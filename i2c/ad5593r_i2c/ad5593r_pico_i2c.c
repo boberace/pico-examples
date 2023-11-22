@@ -5,6 +5,14 @@
 #include <stdio.h>
 #include "hardware/i2c.h"
 
+
+// #define DEBUG // uncomment to print debug information over usb serial
+#ifdef DEBUG
+# define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#else
+# define DEBUG_PRINT(...)
+#endif
+
 /**
  * Write data to a slave device.
  *
@@ -24,8 +32,14 @@ int32_t i2c_write(i2c_desc *desc, uint8_t *data, size_t bytes_number,
 	if (!desc || !data)
 		return -FAILURE;
 
-	return i2c_write_blocking(desc->i2c_instance, desc->slave_address, data,
+	int ret = i2c_write_blocking(desc->i2c_instance, desc->slave_address, data,
 				 bytes_number, !stop_bit);
+	
+	if(ret != bytes_number){
+		DEBUG_PRINT("Error i2c_write %i\n", ret);
+		return -FAILURE;
+	}
+	return 0;
 				 
 }
 
@@ -47,8 +61,14 @@ int32_t i2c_read(i2c_desc *desc, uint8_t *data, size_t bytes_number,
 	if (!desc || !data)
 		return -FAILURE;
 
-	return i2c_read_blocking(desc->i2c_instance, desc->slave_address, data,
+	int ret = i2c_read_blocking(desc->i2c_instance, desc->slave_address, data,
 				bytes_number, !stop_bit);
+
+	if(ret != bytes_number){
+		DEBUG_PRINT("Error i2c_read %i\n", ret);
+		return -FAILURE;
+	}
+	return 0;
 }
 
 /**

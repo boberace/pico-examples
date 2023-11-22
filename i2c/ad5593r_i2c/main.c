@@ -15,6 +15,7 @@
 
 #define ADR5593R_I2C_ADDR 0x10
 #define ADR5593R_ADC_CHANS 0b00111111
+#define ADR5593R_DAC_CHANS 0b11000000
 
 void setup_i2cA(void){
 
@@ -41,39 +42,44 @@ int main() {
     uint32_t dt;
     uint64_t pt = to_us_since_boot(get_absolute_time()), ct;
 
-    uint16_t combined_values[6];
-    int16_t values[6] = {0};
+    uint16_t combined_adc_values[6];
+    uint16_t adc_values[6] = {0}, dac_values[2] = {0};
     uint16_t left = 0, right = 0;
 
     while(true){  
 
         pt = to_us_since_boot(get_absolute_time());   
 
-        if(ad5593r_get_adc_values(ADR5593R_ADC_CHANS, combined_values) == 0){  
+        if(ad5593r_get_adc_values(ADR5593R_ADC_CHANS, combined_adc_values) == 0){  
 
             for(int i=0; i<6; i++){
-                values[(combined_values[i]>>12)&0b111] = (combined_values[i]&0xFFF) - 0x7FF;
+                adc_values[(combined_adc_values[i]>>12)&0b111] = (combined_adc_values[i]&0xFFF) - 0x7FF;
             }     
 
 
             
-            left = (values[0] + values[1] + values[2])/3;
-            right = (values[3] + values[4] + values[5])/3;
+            left = (adc_values[0] + adc_values[1] + adc_values[2])/3;
+            right = (adc_values[3] + adc_values[4] + adc_values[5])/3;
 
-            ret =  ad5593r_set_dac_value(6,left);
-            if (ret != 0){
-                printf("DAC6 write failed %d\n", ret);
-            }
-            ret = ad5593r_set_dac_value(7,right);
-            if (ret != 0){
-                printf("DAC7 write failed %d\n", ret);
-            }
+            dac_values[0] = left;
+            dac_values[1] = right;
+            
+            ret = ad5593r_set_dac_values(ADR5593R_DAC_CHANS, dac_values);
+
+            // ret =  ad5593r_set_dac_value(6,left);
+            // if (ret != 0){
+            //     printf("DAC6 write failed %d\n", ret);
+            // }
+            // ret = ad5593r_set_dac_value(7,right);
+            // if (ret != 0){
+            //     printf("DAC7 write failed %d\n", ret);
+            // }
 
             ct = to_us_since_boot(get_absolute_time());
             dt = (ct - pt);
 
             for(int i=0; i<6; i++){
-                printf("ADC%d: %d, ", i, values[i]);
+                printf("ADC%d: %d, ", i, adc_values[i]);
             }          
             printf("\033[A\33[2K\r dt: %d \n", dt);
         }
