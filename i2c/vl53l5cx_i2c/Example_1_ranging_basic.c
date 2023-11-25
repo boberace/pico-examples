@@ -84,11 +84,11 @@
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 
-#define TOF_I2C_INST i2c1
-#define TOF_PIN_I2C_SDA 18
-#define TOF_PIN_I2C_SCL 19
+#define TOF_I2C_INST i2c0
+#define TOF_PIN_I2C_SDA 12
+#define TOF_PIN_I2C_SCL 13
 #define TOF_I2C_BUADRATE 1000*1000
-static const uint8_t LP_GPIO[]={0,1,2,3,4,5,6,7};
+static const uint8_t LP_GPIO[]={22,27,28,10,11,15,20,21};
 
 int main(void)
 {
@@ -97,7 +97,7 @@ int main(void)
 	/*   VL53L5CX ranging variables  */
 	/*********************************/
 
-	uint8_t 				status, loop, isAlive, isReady, i;
+	uint8_t 				status, loop, isAlive, isReady, i, counter;
 	VL53L5CX_Configuration 	Dev;			/* Sensor configuration */
 	VL53L5CX_ResultsData 	Results;		/* Results data from VL53L5CX */
 
@@ -171,6 +171,7 @@ int main(void)
 	status = vl53l5cx_start_ranging(&Dev);
 
 	loop = 0;
+	counter = 0;
 	while(loop < 10)
 	{
 		/* Use polling function to know when a new measurement is ready.
@@ -195,7 +196,10 @@ int main(void)
 					Results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE*i]);
 			}
 			printf("\n");
-			loop++;
+			// loop++;
+		} else {
+			printf("\033[A\33[2K\rnot ready, %i\n", counter++);
+			WaitMs(&(Dev.platform), 500);
 		}
 
 		/* Wait a few ms to avoid too high polling (function in platform

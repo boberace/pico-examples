@@ -1,14 +1,14 @@
 add_executable(vl53l5cx_i2c)
 
 target_sources(vl53l5cx_i2c PRIVATE 
-        # Example_1_ranging_basic.c
+        Example_1_ranging_basic.c
         # Example_2_get_set_params.c
         # Example_3_ranging_modes.c
         # Example_4_power_modes.c
         # Example_5_multiple_targets_per_zone.c
         # Example_6_I2C_and_RAM_optimization.c
         # Example_7_calibrate_xtalk.c
-        Example_8_vizualize_xtalk_data.c
+        # Example_8_vizualize_xtalk_data.c
 
         platform.c 
         vl53l5cx_api.c

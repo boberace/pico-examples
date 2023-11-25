@@ -29,7 +29,7 @@
 #define I2C_SDA_PIN 12
 #define I2C_SCL_PIN 13
 #define I2C i2c0 // depends on pin selection for either zero or onez
-static const uint8_t LP_GPIO[]={0,1,2,3,4,5,6,7};
+static const uint8_t LP_GPIO[]={22,27,28,10,11,15,20,21};
 
 
 #define PRINT_PROBE_UART // uncomment to print to uart

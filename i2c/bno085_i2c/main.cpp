@@ -14,7 +14,7 @@ TP: Sensor Hub Transport Protocol R 1.7
 #include <string.h>
 
 // define i2c pararmeters and pins
-#define I2CA_BUADRATE 400*1000
+#define I2CA_BUADRATE 400*1000 //400k fastest
 #define PIN_I2CA_SDA 16 
 #define PIN_I2CA_SCL 17 
 #define I2CA_INSTANCE i2c0
