@@ -10,7 +10,8 @@
 #include "pico/stdlib.h"
 #include "pico_wifi_transport.h"
 
-#define ROS_AGENT_IP "10.42.0.1" // "192.168.0.142"
+// #define ROS_AGENT_IP "10.42.0.1" // cellphone hotspot
+#define ROS_AGENT_IP "192.168.0.228"
 
 rcl_publisher_t publisher;
 std_msgs__msg__Int32 msg;

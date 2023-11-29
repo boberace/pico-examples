@@ -7,7 +7,7 @@ TP: Sensor Hub Transport Protocol R 1.7
 
 */
 
-#include "bno085_i2c.h"
+#include "bno085_i2c.hpp"
 
 // uncomment to print debug information over usb serial
 // #define DEBUG

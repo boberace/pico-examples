@@ -7,21 +7,21 @@ endif()
 set(TOF_PATH $ENV{PICO_EXAMPLES_PATH}/i2c/vl53l5cx_i2c)
 
 include_directories($ENV{PICO_UROS_PATH})
-# include_directories(${TOF_PATH})
+include_directories(${TOF_PATH})
 
 project(vl53l5cx_uros C CXX ASM)
+
+link_directories(libmicroros)
 
 add_executable(vl53l5cx_uros
     vl53l5cx_uros.c
     $ENV{PICO_UROS_PATH}/pico_uart_transport.c
     ${TOF_PATH}/platform.c 
     ${TOF_PATH}/vl53l5cx_api.c
-    ${TOF_PATH}/vl53l5cx_plugin_xtalk.c
-
-    
+    ${TOF_PATH}/vl53l5cx_plugin_xtalk.c    
 )   
 
-target_link_directories(vl53l5cx_uros PRIVATE
+target_link_directories(vl53l5cx_uros PUBLIC
     $ENV{PICO_UROS_PATH}/libmicroros
     )
 
@@ -33,9 +33,14 @@ target_link_libraries(vl53l5cx_uros
     pico_cyw43_arch_none # if using pico-w - need the led driver
 )
 
+
 target_include_directories(vl53l5cx_uros PUBLIC
     $ENV{PICO_UROS_PATH}/libmicroros/include
+
 )
+
+SET(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -ffunction-sections -fdata-sections")
+SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -ffunction-sections -fdata-sections")
 
 # Configure Pico
 pico_enable_stdio_usb(vl53l5cx_uros 1)

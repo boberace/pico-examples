@@ -13,7 +13,7 @@
 #include <rmw_microros/rmw_microros.h>
 
 #include "hardware/i2c.h"
-#include "bno085_i2c.h"
+#include "bno085_i2c.hpp"
 
 #include "pico/cyw43_arch.h"
 

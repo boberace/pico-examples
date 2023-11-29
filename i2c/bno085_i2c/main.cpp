@@ -6,7 +6,7 @@ RM: SH-2 Reference Manual v1.2
 TP: Sensor Hub Transport Protocol R 1.7
 
 */
-#include "bno085_i2c.h"
+#include "bno085_i2c.hpp"
 #include <stdio.h>
 #include <stdlib.h>
 #include "pico/stdlib.h"
