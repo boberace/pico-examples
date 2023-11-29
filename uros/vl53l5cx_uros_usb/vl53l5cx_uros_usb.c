@@ -4,7 +4,8 @@
 #include "pico/mutex.h" // mutex_t
 #include "pico_uart_transports.h"
 #include <math.h>
-
+#include "hardware/i2c.h"
+#include "pico/cyw43_arch.h"
 
 #include <rcl/rcl.h>
 #include <rcl/error_handling.h>
@@ -16,9 +17,8 @@
 #include <sensor_msgs/msg/point_field.h>
 #include <rosidl_runtime_c/string_functions.h>
 
-#include "hardware/i2c.h"
-#include "pico/cyw43_arch.h"
 #include "vl53l5cx_api.h"
+
 
 
 #define USING_PICO_W // uncomment if using pico-w so that we can blink the LED
@@ -80,8 +80,6 @@ uint blink_interval = BLINK_NORMAL;
 uint imu_event_counter = 0;
 uint publish_event_counter = 0;
 uint timer_calback_counter = 0;
-
-
 
 uint setup_uart(){
     uint uart_ret = uart_init(UART_A_ID, UART_A_BAUD_RATE);
@@ -154,15 +152,17 @@ void init_point_cloud2_message(){
 void core1_entry(){ 
     PRINT("\r\n-------------------------------core1_entry-------------------------------\r\n");
 
-    double vxy[8] = {-0.4375, -0.3125, -0.1875, -0.0625, 0.0625, 0.1875, 0.3125, 0.4375};
-    double vu[64] = {0.0};
-    double ch = 1.09868411347; // =sqrt(( (0.5/tangent(22.5 degrees))^2 - (0.5)^2))
-    double ch2 = ch*ch;
-    // left to right , bottom to top
-    for(uint i=0; i<8; i++){
-        for(uint j=0; j<8; j++){
-            vu[i*8+j] = sqrt(vxy[i]*vxy[i] + vxy[j]*vxy[j] + ch2);
-        }
+    // float cc[]={-0.3368898534,-0.2429801799,-0.1467304745,-0.04906767433,
+    //                     0.04906767433, 0.1467304745, 0.2429801799, 0.3368898534};
+    // float ss[]={  0.3368898534,   0.2429801799,   0.1467304745,   0.04906767433,
+    //                     -0.04906767433, -0.1467304745, -0.2429801799,   -0.3368898534};
+    float cc[8], ss[8];
+    float sfov = M_PI_4; 
+    float pfov = sfov / 8.0f;
+    float offest = sfov*7/16;                     
+    for(int i=0 ; i<8; i++){ 
+            cc[i] = cos(i*pfov - offest - M_PI_2);
+            ss[i] = sin((7-i)*pfov - offest);
     }
 
 	/*********************************/
@@ -266,58 +266,44 @@ void core1_entry(){
 
 		if(isReady)
 		{
-            // uint64_t tsb = to_us_since_boot(get_absolute_time());
-            // int32_t tsb_sec = tsb/1000000;
-            // uint32_t tsb_nsec = (tsb - tsb_sec*1000000)*1000;
 
 			vl53l5cx_get_ranging_data(&Dev, &Results);
 
             mutex_enter_blocking(&tof_msg_mutex);
 
                 // pc2_msg size and fields are initialized in the Core0 main function
+                // todo: check for timestamp in sensor message and use it if it exists
 
                 rcutils_time_point_value_t now;
-                rcutils_ret_t ret = rcutils_system_time_now(&now);      
-                pc2_msg.header.stamp.sec = RCUTILS_NS_TO_S(now);
-                pc2_msg.header.stamp.nanosec = now - RCUTILS_S_TO_NS(pc2_msg.header.stamp.sec);
-
+                if(RCUTILS_RET_OK == rcutils_system_time_now(&now)){      
+                    pc2_msg.header.stamp.sec = RCUTILS_NS_TO_S(now);
+                    pc2_msg.header.stamp.nanosec = now - RCUTILS_S_TO_NS(pc2_msg.header.stamp.sec);
+                }
                 int pindex = 0;
-                for(uint i=0; i<8; i++){
-                    for(uint j=0; j<8; j++){                        
-                        pindex = i*8+j;
-                        float d_meter = Results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE*pindex] / 1000.0;
+                for(uint w=0; w<8; w++){
+                    for(uint h=0; h<8; h++){                        
+                        pindex = w*8+h;
+                        float d_meter = Results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE*pindex] / 1000.0f;
                         d_meter = d_meter > 0 ? d_meter : 0;
-                        float x = vxy[i]*d_meter/vu[pindex];
-                        float y = vxy[j]*d_meter/vu[pindex];
-                        float z = sqrt(d_meter*d_meter - x*x - y*y);
-                        // x = i;
-                        // y = j;
-                        // z = pindex;
+                        // sensor distance is normal to plane and not radial. 
+                        float z = d_meter * cc[w];
+                        float x = d_meter * ss[h];
+                        float y = d_meter;
+
                         size_t bindex = pindex * POINT_STEP;
                         memcpy(&pointcloud_data[bindex], &x, sizeof(float));
                         memcpy(&pointcloud_data[bindex + sizeof(float)], &y, sizeof(float));
                         memcpy(&pointcloud_data[bindex + 2 * sizeof(float)], &z, sizeof(float));  
                     }
-                }             
-
-                
+                }           
+  
             mutex_exit(&tof_msg_mutex);     
-
-			// PRINT("Print data no : %3u\n", Dev.streamcount);
-			// for(i = 0; i < 64; i++)
-			// {
-			// 	PRINT("Zone : %3d, Status : %3u, Distance : %4d mm\r\n",
-			// 		i,
-			// 		Results.target_status[VL53L5CX_NB_TARGET_PER_ZONE*i],
-			// 		Results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE*i]);
-			// }
-			// PRINT("\r\n");
 
 		} 
 
 		/* Wait a few ms to avoid too high polling (function in platform
 		 * file, not in API) */
-		WaitMs(&(Dev.platform), 1);        
+		WaitMs(&(Dev.platform), 3);        
 
     }
 
