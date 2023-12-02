@@ -197,7 +197,7 @@ void core1_entry(){
 	status = vl53l5cx_is_alive(&Dev, &isAlive);
 	if(!isAlive || status)
 	{
-		PRINT("VL53L5CX not detected at requested address\n");
+		PRINT("VL53L5CX not detected at requested address\r\n");
 		return; // status;
 	}
 
@@ -205,11 +205,11 @@ void core1_entry(){
 	status = vl53l5cx_init(&Dev);
 	if(status)
 	{
-		PRINT("VL53L5CX ULD Loading failed\n");
+		PRINT("VL53L5CX ULD Loading failed\r\n");
 		return; // status;
 	}
 
-	PRINT("VL53L5CX ULD ready ! (Version : %s)\n",
+	PRINT("VL53L5CX ULD ready ! (Version : %s)\r\n",
 			VL53L5CX_API_REVISION);
 
 
@@ -224,7 +224,7 @@ void core1_entry(){
 	status = vl53l5cx_set_resolution(&Dev, VL53L5CX_RESOLUTION_8X8);
 	if(status)
 	{
-		PRINT("vl53l5cx_set_resolution failed, status %u\n", status);
+		PRINT("vl53l5cx_set_resolution failed, status %u\r\n", status);
 		return; // status;
 	}
 
@@ -235,7 +235,7 @@ void core1_entry(){
 	status = vl53l5cx_set_ranging_frequency_hz(&Dev, 10);
 	if(status)
 	{
-		PRINT("vl53l5cx_set_ranging_frequency_hz failed, status %u\n", status);
+		PRINT("vl53l5cx_set_ranging_frequency_hz failed, status %u\r\n", status);
 		return; // status;
 	}
 
@@ -243,7 +243,7 @@ void core1_entry(){
 	status = vl53l5cx_set_target_order(&Dev, VL53L5CX_TARGET_ORDER_CLOSEST);
 	if(status)
 	{
-		PRINT("vl53l5cx_set_target_order failed, status %u\n", status);
+		PRINT("vl53l5cx_set_target_order failed, status %u\r\n", status);
 		return; // status;
 	}
 
@@ -251,10 +251,10 @@ void core1_entry(){
 	status = vl53l5cx_get_integration_time_ms(&Dev, &integration_time_ms);
 	if(status)
 	{
-		PRINT("vl53l5cx_get_integration_time_ms failed, status %u\n", status);
+		PRINT("vl53l5cx_get_integration_time_ms failed, status %u\r\n", status);
 		return; // status;
 	}
-	PRINT("Current integration time is : %d ms\n", integration_time_ms);
+	PRINT("Current integration time is : %d ms\r\n", integration_time_ms);
 
 	/*********************************/
 	/*         Ranging loop          */
@@ -310,7 +310,7 @@ void core1_entry(){
     }
 
     status = vl53l5cx_stop_ranging(&Dev);
-	PRINT("vl53l5cx stop status %i\n", status);
+	PRINT("vl53l5cx stop status %i\r\n", status);
     
 }
 
@@ -367,7 +367,7 @@ int main()
     if (ret != RCL_RET_OK)
     {
         // Unreachable agent, exiting program.
-        PRINT("\nAgent not found!\n");
+        PRINT("\nAgent NOT found!\n");
         return ret;
     } else {
         PRINT("\nAgent found!\n");
