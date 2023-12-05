@@ -37,7 +37,7 @@
 
 bno085_i2c bno085(PIN_BNO085_RST, PIN_BNO085_INT);
 sh2_SensorValue_t sensor_value;
-char id_data[] = "pico_bno085";
+char id_data_imu[] = "pico_bno085";
 
 #define UART_A_ID uart1
 #define UART_A_BAUD_RATE 115200
@@ -97,7 +97,7 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
     
     mutex_enter_blocking(&imu_msg_mutex);
-    imu_msg.header.frame_id.data = id_data;
+    imu_msg.header.frame_id.data = id_data_imu;
     rcl_ret_t ret = rcl_publish(&publisher, &imu_msg, NULL);     
     mutex_exit(&imu_msg_mutex);
     
@@ -109,7 +109,7 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 }
 
 
-uint setReports(void) {
+uint setReports_imu(void) {
   PRINT("Setting desired reports\r\n");
   if (!bno085.enableReport(SH2_ROTATION_VECTOR, IMU_FREQ)) { //sh2.h line 93, RM: 2.2.4 Rotation Vector
     PRINT("Could not enable rotation vector\r\n");
@@ -151,7 +151,7 @@ void core1_entry(){
     PRINT(" Build %d\r\n", bno085.prodIds.entry[n].swBuildNumber);
     } 
 
-    if(setReports() !=0){
+    if(setReports_imu() !=0){
         blink_interval = BLINK_ERROR;
     }
 

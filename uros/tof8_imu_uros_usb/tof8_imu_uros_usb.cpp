@@ -7,6 +7,7 @@
 #include "hardware/i2c.h"
 #include "pico/cyw43_arch.h"
 
+#include "bno085_i2c.hpp"
 
 extern "C" {
 #include <rcl/rcl.h>
@@ -14,6 +15,7 @@ extern "C" {
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
 
+#include <sensor_msgs/msg/imu.h>
 #include <sensor_msgs/msg/point_cloud2.h>
 #include <rmw_microros/rmw_microros.h>
 #include <sensor_msgs/msg/point_field.h>
@@ -38,7 +40,13 @@ extern "C" {
 #define PIN_I2CA_SCL 13
 #define I2CA_INSTANCE i2c0
 
-char id_data[] = "pico_vl53l5cx";
+#define I2CB_BUADRATE 400*1000
+#define PIN_I2CB_SDA 6
+#define PIN_I2CB_SCL 7
+#define I2CB_INSTANCE i2c1
+
+char id_data_tof[] = "pico_vl53l5cx";
+char id_data_imu[] = "pico_bno085";
 
 // define uart parameters and pins connected to picoprobe
 #define UART_A_ID uart1
@@ -46,7 +54,7 @@ char id_data[] = "pico_vl53l5cx";
 #define UART_A_TX_PIN 8
 #define UART_A_RX_PIN 9
 
-#define TOF_FREQ 10 // Hz
+#define TOF_FREQ 15 // Hz
 #define TOF_MS 1000/TOF_FREQ
 
 #define BLINK_ERROR_FREQ 15
@@ -66,9 +74,13 @@ static mutex_t print_mutex;
 #define BLINK_ERROR 1000000/BLINK_ERROR_FREQ
 #define BLINK_NORMAL 1000000/BLINK_NORMAL_FREQ
 
-rcl_publisher_t publisher;
+rcl_publisher_t publisher_tof;
+rcl_publisher_t publisher_imu;
 sensor_msgs__msg__PointCloud2 pc2_msg;  
 static mutex_t tof_msg_mutex;
+sensor_msgs__msg__Imu imu_msg;
+static mutex_t imu_msg_mutex;
+static mutex_t imu_values_mutex;
 
 // number of tof sensors
 #define NUM_SENSORS 8
@@ -86,9 +98,21 @@ static const uint8_t LP_GPIO[NUM_SENSORS]={22,27,28,10,11,15,20,21}; // Comms en
 #define ROW_STEP (POINT_STEP * WIDTH_ARRAY) // Size of each row of array
 #define DATA_SIZE (HEIGHT * ROW_STEP) // Total size of the data byte array of pointcloud2 message
 uint8_t pointcloud_data[DATA_SIZE]; // Static array for pointcloud2 data
+uint8_t pointcloud_data_buffer[DATA_SIZE]; // Static array for pointcloud2 data buffer
 #define SENSOR_BYTE_OFFSET (POINT_STEP * WIDTH * HEIGHT) // Byte Offset for sensor data in pointcloud2 message
 
 sensor_msgs__msg__PointField point_fields[NUM_FIELDS];
+
+// bno085
+// define bno085 interrupt and reset pins
+#define PIN_BNO085_INT 26 
+#define PIN_BNO085_RST 14 
+
+#define IMU_FREQ 10
+
+bno085_i2c bno085(PIN_BNO085_RST, PIN_BNO085_INT);
+sh2_SensorValue_t sensor_value;
+sh2_SensorValue_t sensor_value_buffer;
 
 uint blink_interval = BLINK_NORMAL;
 uint imu_event_counter = 0;
@@ -101,11 +125,20 @@ uint64_t prev_millis_inside = 0;
 uint64_t curr_millis_outside = 0;
 uint64_t prev_millis_outside = 0;
 
-uint setup_uart(){
+uint setup_uartA(){
     uint uart_ret = uart_init(UART_A_ID, UART_A_BAUD_RATE);
     gpio_set_function(UART_A_TX_PIN, GPIO_FUNC_UART);
     gpio_set_function(UART_A_RX_PIN, GPIO_FUNC_UART);
     return uart_ret;
+}
+
+int setup_i2cB(void){
+    int ret = i2c_init(I2CB_INSTANCE, I2CB_BUADRATE);
+    gpio_set_function(PIN_I2CB_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(PIN_I2CB_SCL, GPIO_FUNC_I2C);
+    gpio_pull_up(PIN_I2CB_SDA);
+    gpio_pull_up(PIN_I2CB_SCL);
+    return ret;
 }
 
 int setup_i2cA(void){
@@ -117,11 +150,32 @@ int setup_i2cA(void){
     return ret;
 }
 
-void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
+uint setReports_imu(void) {
+  PRINT("Setting desired reports\r\n");
+  if (!bno085.enableReport(SH2_ROTATION_VECTOR, IMU_FREQ)) { //sh2.h line 93, RM: 2.2.4 Rotation Vector
+    PRINT("Could not enable rotation vector\r\n");
+    blink_interval = BLINK_ERROR;
+  } PRINT("Rotation vector enabled\r\n");
+  if (!bno085.enableReport(SH2_ACCELEROMETER, IMU_FREQ)) {
+    PRINT("Could not enable accelerometer");
+    blink_interval = BLINK_ERROR;
+  }
+  if (!bno085.enableReport(SH2_GYROSCOPE_CALIBRATED, IMU_FREQ)) {
+    PRINT("Could not enable gyroscope");
+    blink_interval = BLINK_ERROR;
+  }
+    return 0;
+}
+
+void timer_callback_tof(rcl_timer_t *timer, int64_t last_call_time)
 {
+    rcl_ret_t ret;
     mutex_enter_blocking(&tof_msg_mutex);
-        rcl_ret_t ret = rcl_publish(&publisher, &pc2_msg, NULL);      
+    ret = rcl_publish(&publisher_tof, &pc2_msg, NULL);      
     mutex_exit(&tof_msg_mutex);
+    mutex_enter_blocking(&imu_msg_mutex);    
+    ret = rcl_publish(&publisher_imu, &imu_msg, NULL);     
+    mutex_exit(&imu_msg_mutex);    
     
     if (ret == RCL_RET_OK){
         publish_event_counter++;                           
@@ -132,7 +186,7 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 
 void init_point_cloud2_message(){
     // define data for point cloud2 message
-    pc2_msg.header.frame_id.data = id_data;
+    pc2_msg.header.frame_id.data = id_data_tof;
     
     pc2_msg.height = HEIGHT;
     pc2_msg.width = WIDTH_ARRAY;    
@@ -141,7 +195,7 @@ void init_point_cloud2_message(){
     pc2_msg.data.size = DATA_SIZE;
     pc2_msg.data.data = pointcloud_data;
     pc2_msg.is_bigendian = false; // RP2040 is little endian (Cortex M0+)
-    pc2_msg.is_dense = false; // todo: check if all points are valid
+    pc2_msg.is_dense = true; // todo: check if all points are valid
 
     // Define fields for x, y, z
     pc2_msg.fields.size = NUM_FIELDS;   
@@ -193,9 +247,9 @@ void select_sensor(uint s){
     gpio_put(LP_GPIO[s], 1);
 }
 
-void core1_entry(){ 
-    PRINT("\r\n-------------------------------core1_entry-------------------------------\r\n");
+void core1_entry(){ // **************************** core1_entry *******************************
 
+    
     // precalculate the sin and cos values for the grid
     // todo - update to use WIDTH and HEIGHT (check for float division)
     float cc[WIDTH], ss[HEIGHT];
@@ -216,7 +270,13 @@ void core1_entry(){
 	VL53L5CX_Configuration 	Dev[NUM_SENSORS];			/* Sensor configuration */
 	VL53L5CX_ResultsData 	Results[NUM_SENSORS];		/* Results[i] data from VL53L5CX */
 
-    setup_i2cA();
+    int i2cA_ret = setup_i2cA();
+    if(abs(int(I2CA_BUADRATE-i2cA_ret)) > 0.02*I2CA_BUADRATE ){
+        PRINT("I2CA setup failed %d\r\n", i2cA_ret);
+        blink_interval = BLINK_ERROR;
+    }
+    PRINT("setup_i2cA baud rate %d\r\n", i2cA_ret);
+
     // setup LP mode comms enable for all sensors
     for(uint i=0; i<NUM_SENSORS; i++){
         gpio_init(LP_GPIO[i]);
@@ -321,15 +381,15 @@ void core1_entry(){
     }
     deselect_sensor_all();
     select_sensor_all();
+
 	/*********************************/
 	/*         Ranging loop          */
 	/*********************************/	
 
     while (true)
-    {
-        prev_millis_outside = to_ms_since_boot(get_absolute_time());
-        mutex_enter_blocking(&tof_msg_mutex);
+    {              
         prev_millis_inside = to_ms_since_boot(get_absolute_time());
+        
         for(uint i=0; i<NUM_SENSORS; i++){
             
             status[i] = vl53l5cx_check_data_ready(&Dev[i], &isReady[i]);
@@ -344,33 +404,25 @@ void core1_entry(){
             if(isReady[i])
             {
 
-                vl53l5cx_get_ranging_data(&Dev[i], &Results[i]);                
+                vl53l5cx_get_ranging_data(&Dev[i], &Results[i]);              
 
-                    // pc2_msg size and fields are initialized in the Core0 main function
-                    // todo: check for timestamp in sensor message and use it if it exists
-
-                    rcutils_time_point_value_t now;
-                    if(RCUTILS_RET_OK == rcutils_system_time_now(&now)){      
-                        pc2_msg.header.stamp.sec = RCUTILS_NS_TO_S(now);
-                        pc2_msg.header.stamp.nanosec = now - RCUTILS_S_TO_NS(pc2_msg.header.stamp.sec);
-                    }
                     int pindex = 0;
                     for(uint w=0; w<8; w++){
                         for(uint h=0; h<8; h++){                        
                             pindex = w*8+h;
                             float d_meter = Results[i].distance_mm[VL53L5CX_NB_TARGET_PER_ZONE*pindex] / 1000.0f;
                             d_meter = d_meter > 0 ? d_meter : 0;
-                            // sensor distance is normal to plane and not radial. 
+                            // sensor distance is normal to sensor plane and not radial to sensor point. 
                             float z = d_meter * cc[w];
                             float x = d_meter * ss[h];
                             float y = d_meter;
 
-                            rotatez(&x, &y, &z, i*M_PI_4); 
+                            rotatez(&x, &y, &z, i*M_PI_4); // rotate sensor data around z axis by i * 45 degrees
 
                             size_t bindex = pindex * POINT_STEP;
-                            memcpy(&pointcloud_data[bindex + i*SENSOR_BYTE_OFFSET], &x, sizeof(float));
-                            memcpy(&pointcloud_data[bindex + sizeof(float) + i*SENSOR_BYTE_OFFSET], &y, sizeof(float));
-                            memcpy(&pointcloud_data[bindex + 2 * sizeof(float) + i*SENSOR_BYTE_OFFSET], &z, sizeof(float));  
+                            memcpy(&pointcloud_data_buffer[bindex + i * SENSOR_BYTE_OFFSET], &x, FIELD_SIZE);
+                            memcpy(&pointcloud_data_buffer[bindex + FIELD_SIZE + i * SENSOR_BYTE_OFFSET], &y, FIELD_SIZE);
+                            memcpy(&pointcloud_data_buffer[bindex + 2 * FIELD_SIZE + i * SENSOR_BYTE_OFFSET], &z, FIELD_SIZE);  
                         }
                     }                                  
 
@@ -380,16 +432,23 @@ void core1_entry(){
 
         } 
         curr_millis_inside = to_ms_since_boot(get_absolute_time());
+
+        mutex_enter_blocking(&tof_msg_mutex);
+        // pc2_msg size and fields are initialized in the Core0 main function
+        // todo: check for timestamp in sensor message and use it if it exists
+        rcutils_time_point_value_t now;
+        if(RCUTILS_RET_OK == rcutils_system_time_now(&now)){      
+            pc2_msg.header.stamp.sec = RCUTILS_NS_TO_S(now);
+            pc2_msg.header.stamp.nanosec = now - RCUTILS_S_TO_NS(pc2_msg.header.stamp.sec);
+        }
+        memcpy(pointcloud_data, pointcloud_data_buffer, DATA_SIZE);
         mutex_exit(&tof_msg_mutex); 
+
         curr_millis_outside = to_ms_since_boot(get_absolute_time());
         uint32_t delta_millis_inside = (curr_millis_inside - prev_millis_inside);
         uint32_t delta_millis_outside = (curr_millis_outside - prev_millis_outside);
-        PRINT("delta_millis inside %u\r\n", delta_millis_inside);
-        PRINT("delta_millis outside %u\r\n\r\n", delta_millis_outside);
-        sleep_ms(1);
-        // /* Wait a few ms to avoid too high polling (function in platform
-        //     * file, not in API) */
-        // WaitMs(&(Dev[i].platform), 3);        
+        PRINT("delta_millis inside %u, outside %u\r\n\r\n", delta_millis_inside, delta_millis_outside);
+        prev_millis_outside = to_ms_since_boot(get_absolute_time());   
 
     }
 
@@ -398,14 +457,13 @@ void core1_entry(){
         PRINT("vl53l5cx stop status[i] %i - sensor %i\r\n", status[i], i);
     }
     
-}
+} // **************************** end core1_entry *******************************
 
-int main()
+int main() // **************************** main *******************************
 {
     sleep_ms(2000);
     mutex_init(&print_mutex);
     init_point_cloud2_message();
-
 
 #ifdef USING_PICO_W
     if (cyw43_arch_init()) {
@@ -417,7 +475,7 @@ int main()
     gpio_set_dir(25, GPIO_OUT);
 #endif
 
-    uint uart_ret = setup_uart();
+    uint uart_ret = setup_uartA();
     if(abs((int)(uart_ret - UART_A_BAUD_RATE)) > 0.02*UART_A_BAUD_RATE){
         PRINT("UART setup failed %d\r\n", uart_ret);
         blink_interval = BLINK_ERROR;
@@ -453,7 +511,7 @@ int main()
     if (ret != RCL_RET_OK)
     {
         // Unreachable agent, exiting program.
-        PRINT("\nAgent NOT found!\n");
+        PRINT("\n-------------------------------------Agent NOT found!\n");
         return ret;
     } else {
         PRINT("\nAgent found!\n");
@@ -463,19 +521,51 @@ int main()
 
     rclc_node_init_default(&node, "pico_node", "", &support);
     rclc_publisher_init_default(
-        &publisher,
+        &publisher_tof,
         &node,
         ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, PointCloud2),
         "tof");
-
+    rclc_publisher_init_default(
+        &publisher_imu,
+        &node,
+        ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
+        "ppimu");
     rclc_timer_init_default(
         &timer,
         &support,
         RCL_MS_TO_NS(TOF_MS),
-        timer_callback);
+        timer_callback_tof);
 
     rclc_executor_init(&executor, &support.context, 1, &allocator);   
     rclc_executor_add_timer(&executor, &timer);
+
+
+    int i2cB_ret = setup_i2cB();
+    if(abs(int(I2CB_BUADRATE-i2cB_ret)) > 0.02*I2CB_BUADRATE ){
+        PRINT("I2CB setup failed %d\r\n", i2cB_ret);
+        blink_interval = BLINK_ERROR;
+    }
+    PRINT("setup_i2cB baud rate %d\r\n", i2cB_ret);
+
+    if(bno085.connect_i2c(I2CB_INSTANCE)) PRINT(" bno0855 has initialized\r\n");
+    else {
+        blink_interval = BLINK_ERROR;
+        PRINT(" bno0855 NOT initialized\r\n");
+    }
+
+    for (int n = 0; n < bno085.prodIds.numEntries; n++) { // sh2.h line 60
+    PRINT("Part %d\r\n", bno085.prodIds.entry[n].swPartNumber);
+    PRINT(": Version %d.%d.%d\r\n",  bno085.prodIds.entry[n].swVersionMajor, 
+                                    bno085.prodIds.entry[n].swVersionMinor, 
+                                    bno085.prodIds.entry[n].swVersionPatch);
+    PRINT(" Build %d\r\n", bno085.prodIds.entry[n].swBuildNumber);
+    } 
+
+    if(setReports_imu() !=0){
+        blink_interval = BLINK_ERROR;
+    }
+
+    imu_msg.header.frame_id.data = id_data_imu;
 
     uint64_t pt = to_us_since_boot(get_absolute_time());
 
@@ -488,6 +578,50 @@ int main()
             led_toggle();
         }
 
+        if (bno085.getSensorEvent(&sensor_value_buffer)) {     
+
+            mutex_enter_blocking(&imu_msg_mutex);
+                rcutils_time_point_value_t now;
+                if(RCUTILS_RET_OK == rcutils_system_time_now(&now)){      
+                    imu_msg.header.stamp.sec = RCUTILS_NS_TO_S(now);
+                    imu_msg.header.stamp.nanosec = now - RCUTILS_S_TO_NS(imu_msg.header.stamp.sec);
+                }   
+
+                switch (sensor_value_buffer.sensorId) {      
+                        
+                case SH2_ROTATION_VECTOR:
+                    imu_msg.orientation.w = sensor_value_buffer.un.gameRotationVector.real;
+                    imu_msg.orientation.x = sensor_value_buffer.un.gameRotationVector.i;
+                    imu_msg.orientation.y = sensor_value_buffer.un.gameRotationVector.j;
+                    imu_msg.orientation.z = sensor_value_buffer.un.gameRotationVector.k;
+                    imu_event_counter++;
+                break;
+                case SH2_ACCELEROMETER:
+                    imu_msg.linear_acceleration.x = sensor_value_buffer.un.accelerometer.x;
+                    imu_msg.linear_acceleration.y = sensor_value_buffer.un.accelerometer.y;
+                    imu_msg.linear_acceleration.z = sensor_value_buffer.un.accelerometer.z; 
+                    imu_event_counter++;
+                break;
+                case SH2_GYROSCOPE_CALIBRATED:
+                    imu_msg.angular_velocity.x = sensor_value_buffer.un.gyroscope.x;
+                    imu_msg.angular_velocity.y = sensor_value_buffer.un.gyroscope.y;
+                    imu_msg.angular_velocity.z = sensor_value_buffer.un.gyroscope.z;
+                    imu_event_counter++;
+                break;
+                default:
+                break;
+
+                }
+            mutex_exit(&imu_msg_mutex);
+
+            mutex_enter_blocking(&imu_values_mutex); 
+            memcpy(&sensor_value, &sensor_value_buffer, sizeof(sh2_SensorValue_t)); 
+            mutex_exit(&imu_values_mutex);
+
+        }
+
+
+
     }
     return 0;
-}
+} // **************************** end main  *******************************

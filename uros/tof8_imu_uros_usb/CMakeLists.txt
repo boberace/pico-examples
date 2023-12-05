@@ -5,9 +5,11 @@ else()
 endif()
 
 set(TOF_PATH $ENV{PICO_EXAMPLES_PATH}/i2c/vl53l5cx_i2c)
+set(IMU_PATH $ENV{PICO_EXAMPLES_PATH}/i2c/bno085_i2c)
 
 include_directories($ENV{PICO_UROS_PATH})
 include_directories(${TOF_PATH})
+include_directories(${IMU_PATH})
 
 project(tof8_imu_uros_usb C CXX ASM)
 
@@ -19,6 +21,11 @@ add_executable(tof8_imu_uros_usb
     ${TOF_PATH}/platform.c 
     ${TOF_PATH}/vl53l5cx_api.c
     ${TOF_PATH}/vl53l5cx_plugin_xtalk.c    
+    ${IMU_PATH}/bno085_i2c.cpp
+    ${IMU_PATH}/sh2.c
+    ${IMU_PATH}/sh2_SensorValue.c
+    ${IMU_PATH}/sh2_util.c
+    ${IMU_PATH}/shtp.c
 )   
 
 target_link_directories(tof8_imu_uros_usb PUBLIC
