@@ -415,7 +415,7 @@ void core1_entry(){ // **************************** core1_entry ****************
                             // sensor distance is normal to sensor plane and not radial to sensor point. 
                             float z = d_meter * cc[w];
                             float x = d_meter * ss[h];
-                            float y = d_meter;
+                            float y = d_meter + 0.021; // distance from sensor to center of rotation
 
                             rotatez(&x, &y, &z, i*M_PI_4); // rotate sensor data around z axis by i * 45 degrees
 
