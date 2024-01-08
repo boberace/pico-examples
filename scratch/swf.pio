@@ -1,0 +1,5 @@
+
+.program swf
+	set pins, 1      ; Drive pin highs
+	set pins, 0      ; Drive pin low
+

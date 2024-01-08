@@ -1,0 +1,20 @@
+
+; todo: figure out how to get rid of the first three lines so that all is in loop
+;       or figure out how to add three clock cycles to the loop regardless of the
+;       period of the PWM signal
+
+
+.program pwm
+.side_set 1 opt
+
+    pull noblock    side 0 ; Pull from FIFO to OSR if available, else copy X to OSR.
+    mov x, osr             ; Copy most-recently-pulled value back to scratch X
+    mov y, isr             ; ISR contains PWM period. Y used as counter.
+countloop:
+    jmp x!=y noset         ; Set pin high if X == Y, keep the two paths length matched
+    jmp skip        side 1
+noset:
+    nop                    ; Single dummy cycle to keep the two paths the same length
+skip:
+    jmp y-- countloop      ; Loop until Y hits 0, then pull a fresh PWM value from FIFO
+

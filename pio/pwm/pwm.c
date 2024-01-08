@@ -10,6 +10,8 @@
 #include "hardware/pio.h"
 #include "pwm.pio.h"
 
+#define PIN_LED 0
+
 // Write `period` to the input shift register
 void pio_pwm_set_period(PIO pio, uint sm, uint32_t period) {
     pio_sm_set_enabled(pio, sm, false);
@@ -26,10 +28,6 @@ void pio_pwm_set_level(PIO pio, uint sm, uint32_t level) {
 
 int main() {
     stdio_init_all();
-#ifndef PICO_DEFAULT_LED_PIN
-#warning pio/pwm example requires a board with a regular LED
-    puts("Default LED pin was not defined");
-#else
 
     // todo get free sm
     PIO pio = pio0;
@@ -37,15 +35,26 @@ int main() {
     uint offset = pio_add_program(pio, &pwm_program);
     printf("Loaded program at %d\n", offset);
 
-    pwm_program_init(pio, sm, offset, PICO_DEFAULT_LED_PIN);
+    pwm_program_init(pio, sm, offset, PIN_LED);
     pio_pwm_set_period(pio, sm, (1u << 16) - 1);
 
     int level = 0;
+    int inc = 1;
     while (true) {
         printf("Level = %d\n", level);
         pio_pwm_set_level(pio, sm, level * level);
-        level = (level + 1) % 256;
+        if(level == 255) {
+            printf("Resetting\n");
+            inc = -1;
+        }
+        if(level == 0) {
+            printf("Resetting\n");
+            inc = 1;
+        }
+
+        level = (level + inc) % 256;
         sleep_ms(10);
     }
-#endif
+
+
 }

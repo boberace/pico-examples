@@ -9,3 +9,6 @@ pico_add_extra_outputs(pio_pwm)
 
 # add url via pico_set_program_url
 example_auto_set_url(pio_pwm)
+
+pico_enable_stdio_usb(pio_pwm 1)
+pico_enable_stdio_uart(pio_pwm 0)
