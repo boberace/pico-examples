@@ -1,21 +1,29 @@
-include_directories(../tmc_stepsticks)
-add_executable(scratch)
+add_executable(scratch_flash)
 
-pico_generate_pio_header(scratch ${CMAKE_CURRENT_LIST_DIR}/pwm.pio)
-pico_generate_pio_header(scratch ${CMAKE_CURRENT_LIST_DIR}/swf.pio)
+pico_generate_pio_header(scratch_flash ${CMAKE_CURRENT_LIST_DIR}/spi.pio)
 
-target_sources(scratch PRIVATE 
-                main.c
-                ../tmc_stepsticks/tmc/ic/TMC2208/TMC2208.c
-                ../tmc_stepsticks/tmc/helpers/CRC.c
-                ../tmc_stepsticks/tmc2208_pico.c
-                )
+target_sources(scratch_flash PRIVATE
+        spi_flash.c
+        pio_spi.c
+        pio_spi.h
+        )
 
-target_link_libraries(scratch PRIVATE pico_stdlib hardware_pio)
-pico_add_extra_outputs(scratch)
+target_link_libraries(scratch_flash PRIVATE pico_stdlib hardware_pio)
+pico_add_extra_outputs(scratch_flash)
 
-# add url via pico_set_program_url
-example_auto_set_url(scratch)
+example_auto_set_url(scratch_flash)
 
-pico_enable_stdio_usb(scratch 1)
-pico_enable_stdio_uart(scratch 0)
+add_executable(scratch_loopback)
+
+pico_generate_pio_header(scratch_loopback ${CMAKE_CURRENT_LIST_DIR}/spi.pio)
+
+target_sources(scratch_loopback PRIVATE
+        spi_loopback.c
+        pio_spi.c
+        pio_spi.h
+        )
+
+target_link_libraries(scratch_loopback PRIVATE pico_stdlib hardware_pio)
+pico_add_extra_outputs(scratch_loopback)
+
+example_auto_set_url(scratch_loopback)
