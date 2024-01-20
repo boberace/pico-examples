@@ -13,5 +13,5 @@ pico_add_extra_outputs(lis2dw12_i2c) # create map/bin/hex file etc.
 # add url via pico_set_program_url
 example_auto_set_url(lis2dw12_i2c)
 
-pico_enable_stdio_usb(lis2dw12_i2c 0)
+pico_enable_stdio_usb(lis2dw12_i2c 1)
 pico_enable_stdio_uart(lis2dw12_i2c 1)

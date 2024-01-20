@@ -29,9 +29,9 @@
 #define I2C_SDA_PIN 0
 #define I2C_SCL_PIN  1
 #define I2C i2c0 // depends on pin selection for either zero or one
-#define I2C_BAUD_RATE 400 * 1000
+#define I2C_BAUD_RATE 100 * 1000
 
-#define PRINT_PROBE_UART // uncomment to print to uart
+// #define PRINT_PROBE_UART // uncomment to print to uart
 
 #ifdef PRINT_PROBE_UART
 
@@ -68,18 +68,20 @@ bool reserved_addr(uint8_t addr) {
 int main() {
     stdio_init_all();
     sleep_ms(2000);
-    i2c_init(I2C, I2C_BAUD_RATE);
-    gpio_set_function(I2C_SDA_PIN, GPIO_FUNC_I2C);
-    gpio_set_function(I2C_SCL_PIN, GPIO_FUNC_I2C);
-    gpio_pull_up(I2C_SDA_PIN);
-    gpio_pull_up(I2C_SCL_PIN);
-    // Make the I2C pins available to picotool
-    bi_decl(bi_2pins_with_func(I2C_SDA_PIN, I2C_SCL_PIN, GPIO_FUNC_I2C));
 
     #define POW_PIN 21
     gpio_init(POW_PIN);
     gpio_set_dir(POW_PIN, GPIO_OUT);
     gpio_put(POW_PIN, 1);
+
+    i2c_init(I2C, I2C_BAUD_RATE);
+    gpio_set_function(I2C_SDA_PIN, GPIO_FUNC_I2C);
+    gpio_set_function(I2C_SCL_PIN, GPIO_FUNC_I2C);
+    // gpio_pull_up(I2C_SDA_PIN);
+    // gpio_pull_up(I2C_SCL_PIN);
+    // Make the I2C pins available to picotool
+    bi_decl(bi_2pins_with_func(I2C_SDA_PIN, I2C_SCL_PIN, GPIO_FUNC_I2C));
+
 
     #ifdef PRINT_PROBE_UART
     uint uart_ret = setup_uart();
@@ -110,10 +112,14 @@ int main() {
         if (reserved_addr(addr))
             ret = PICO_ERROR_GENERIC;
         else
+        {
+            // ret = i2c_write_blocking (I2C, 0, 0, 1, true);
             ret = i2c_read_blocking(I2C, addr, &rxdata, 1, false);
             // ret = i2c_read_timeout_us(I2C, addr, &rxdata, 1, false, 2000);
+        }
 
         PRINT(ret <= 0 ? "." : "@");
+        // PRINT("%i",ret );
         PRINT(addr % 16 == 15 ? "\r\n" : "  ");
     }
     PRINT("Done.\r\n");

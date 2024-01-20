@@ -18,11 +18,14 @@ uint8_t I2C_ADDRESS;
 int32_t platform_write(void *handle, uint8_t reg, const uint8_t *bufp,
                               uint16_t len)
 {
-
+    int ret;
     uint8_t data[len+1];
     data[0] = reg;
     memcpy(&data[1], bufp, len);
-    i2c_write_blocking(PICO_I2C_INST, I2C_ADDRESS, data, len+1, false);
+    ret = i2c_write_blocking(PICO_I2C_INST, I2C_ADDRESS, data, len+1, false);
+    if (ret != len+1) {
+        return -3;
+    }
 
   return 0;
 }
@@ -40,8 +43,15 @@ int32_t platform_write(void *handle, uint8_t reg, const uint8_t *bufp,
 int32_t platform_read(void *handle, uint8_t reg, uint8_t *bufp,
                              uint16_t len)
 {
-    i2c_write_blocking(PICO_I2C_INST, I2C_ADDRESS, &reg, 1, true);
-    i2c_read_blocking(PICO_I2C_INST, I2C_ADDRESS, bufp, len, false);
+    int ret;
+    ret = i2c_write_blocking(PICO_I2C_INST, I2C_ADDRESS, &reg, 1, true);
+    if (ret != 1) {
+        return -1;
+    }
+    ret = i2c_read_blocking(PICO_I2C_INST, I2C_ADDRESS, bufp, len, false);
+    if (ret != len) {
+        return -2;
+    }
 
   return 0;
 }

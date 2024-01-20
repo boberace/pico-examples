@@ -27,14 +27,14 @@
 #define UART_A_TX_PIN 8
 #define UART_A_RX_PIN 9
 
-#define BUFFER_SIZE 256
-#define PRINT(...)                     \
-    do {                               \
-        char buffer[BUFFER_SIZE];      \
-        snprintf(buffer, sizeof(buffer), __VA_ARGS__); \
-        uart_puts(UART_A_ID, buffer);      \
-    } while (0)
-
+// #define BUFFER_SIZE 256
+// #define PRINT(...)                     \
+//     do {                               \
+//         char buffer[BUFFER_SIZE];      \
+//         snprintf(buffer, sizeof(buffer), __VA_ARGS__); \
+//         uart_puts(UART_A_ID, buffer);      \
+//     } while (0)
+#define PRINT(...) printf(__VA_ARGS__)
 
 static int16_t data_raw_acceleration[3];
 static float acceleration_mg[3];
@@ -113,12 +113,15 @@ void lis2dw12_read_data_polling(void)
 //   /* Wait sensor boot time */
 //   platform_delay(BOOT_TIME);
   /* Check device ID */
-  lis2dw12_device_id_get(&dev_ctx, &whoamI);
-  PRINT("whoamI (%i) :, LIS2DW12_ID (%i)\r\n", whoamI, LIS2DW12_ID);
-
+  int32_t ret = lis2dw12_device_id_get(&dev_ctx, &whoamI);
+  PRINT("ret (%i), whoamI (%i) :, LIS2DW12_ID (%i)\r\n\r\n",ret, whoamI, LIS2DW12_ID);
+  int counter = 0;
   if (whoamI != LIS2DW12_ID)
     while (1) {
       /* manage here device not found */
+      sleep_ms(1000);
+      PRINT("\033[A\33[2K\rlis2dw12 not found, %i\n", counter);
+      counter++;
       }
 
   /* Restore default configuration */

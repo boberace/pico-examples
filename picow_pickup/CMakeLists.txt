@@ -14,6 +14,7 @@ target_include_directories(picow_pickup_background PRIVATE
 target_link_libraries(picow_pickup_background
         pico_cyw43_arch_lwip_threadsafe_background
         pico_stdlib
+        hardware_i2c
         pico_lwip_mdns
         )
 
@@ -37,6 +38,7 @@ target_include_directories(picow_pickup_poll PRIVATE
 target_link_libraries(picow_pickup_poll
         pico_cyw43_arch_lwip_poll
         pico_stdlib
+        hardware_i2c
         pico_lwip_mdns
         )
 pico_add_extra_outputs(picow_pickup_poll)
