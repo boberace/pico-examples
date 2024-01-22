@@ -5,6 +5,7 @@ add_executable(rover1
 target_link_libraries(rover1
         pico_stdlib              # for core functionality
         pico_cyw43_arch_none     # we need Wifi to access the GPIO, but we don't need anything else
+        hardware_pwm
         )
 
 # create map/bin/hex file etc.
