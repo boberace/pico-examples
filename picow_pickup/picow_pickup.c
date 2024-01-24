@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 #include "hardware/i2c.h"
@@ -23,10 +24,10 @@
 // op-amp Schmitt trigger input
 const uint8_t ST_PINS[] =  {2, 3, 4, 5, 6, 7};
 // process loop pins for external mcu
-#define PROC_1_PIN  8
-#define PROC_2_PIN  9
-#define PROC_3_PIN  10
-#define PROC_4_PIN  11
+// #define PROC_1_PIN  8
+// #define PROC_2_PIN  9
+// #define PROC_3_PIN  10
+// #define PROC_4_PIN  11
 // status led
 #define SLED_PIN  12
 // DAC pins
@@ -48,6 +49,47 @@ const uint8_t ST_PINS[] =  {2, 3, 4, 5, 6, 7};
 #define SR_DATA_PIN  27
 // battery voltage monitor
 #define BAT_HALFVOLTS_PIN  28
+
+#define DEBUG       // uncomment to print debug messages
+#define DEBUG_UART  // uncomment to print debug messages to uart else debug to usb serial
+
+// debug print handling
+#ifdef DEBUG
+#ifdef DEBUG_UART
+
+#define UART_A_ID uart1
+#define UART_A_BAUD_RATE 115200
+#define UART_A_TX_PIN 8
+#define UART_A_RX_PIN 9
+
+uint setup_uart() {
+    uint uart_ret = uart_init(UART_A_ID, UART_A_BAUD_RATE);
+    gpio_set_function(UART_A_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART_A_RX_PIN, GPIO_FUNC_UART);
+    return uart_ret;
+}
+
+#define BUFFER_SIZE 256
+void DEBUG_PRINT(const char* format, ...) {
+    char buffer[BUFFER_SIZE];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    uart_puts(UART_A_ID, buffer);
+    va_end(args);
+}
+#else
+void DEBUG_PRINT(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+}
+#endif
+#else
+void DEBUG_PRINT(const char* format, ...) {
+}
+#endif
 
 uint curr_millis = 0;
 uint previous_millis = 0;
@@ -91,21 +133,24 @@ int main() {
     setup_st_pins();
     setup_dac();
     setup_adc();
+    #ifdef DEBUG_UART
+    setup_uart();
+    #endif
 
 
     if (cyw43_arch_init()) {
-        printf("failed to initialise\n");
+        DEBUG_PRINT("failed to initialise\r\n");
         return 1;
     }
 
     cyw43_arch_enable_sta_mode();
 
-    printf("Connecting to Wi-Fi...\n");
+    DEBUG_PRINT("Connecting to Wi-Fi...\r\n");
     if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        printf("failed to connect.\n");
+        DEBUG_PRINT("failed to connect.\r\n");
         return 1;
     } else {
-        printf("Connected.\n");
+        DEBUG_PRINT("Connected.\r\n");
     }
 
     mdns_picow_init();

@@ -19,8 +19,8 @@ target_link_libraries(picow_pickup_background
         )
 
 pico_add_extra_outputs(picow_pickup_background)
-pico_enable_stdio_usb(picow_pickup_background 1)
-pico_enable_stdio_uart(picow_pickup_background 0)
+pico_enable_stdio_usb(picow_pickup_background 0)
+pico_enable_stdio_uart(picow_pickup_background 1)
 
 add_executable(picow_pickup_poll
         picow_pickup.c
@@ -42,5 +42,5 @@ target_link_libraries(picow_pickup_poll
         pico_lwip_mdns
         )
 pico_add_extra_outputs(picow_pickup_poll)
-pico_enable_stdio_usb(picow_pickup_poll 1)
-pico_enable_stdio_uart(picow_pickup_poll 0)
+pico_enable_stdio_usb(picow_pickup_poll 0)
+pico_enable_stdio_uart(picow_pickup_poll 1)

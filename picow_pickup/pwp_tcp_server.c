@@ -11,31 +11,23 @@
 
 // wifi led pin is used
 
-#define DEBUG_MAIN printf 
 
-#ifdef DEBUG_MAIN
-  #define DEBUG_printf(x, ...) DEBUG_MAIN(x , ##__VA_ARGS__)
-#else
-  #define DEBUG_printf(x, ...)
-#endif
-
+// storage handling
 #define RANGE_OFFSET 0
 #define SELECT_OFFSET 256
 #define TOGGLE_OFFSET 512
-
-
 
 uint8_t range_values[256] = {0};
 uint8_t select_values[256] = {0};
 bool toggle_values[256] = {false};
 
 extern void tcp_server_post_loop(void);
-
+extern void DEBUG_PRINT(const char* format, ...) ;
 
 static TCP_SERVER_T* tcp_server_init(void) {
     TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T)); // mem_calloc fails to allocate?
     if (!state) {
-        DEBUG_printf("DEBUG failed to allocate state\n");
+        DEBUG_PRINT("DEBUG failed to allocate state\r\n");
         return NULL;
     }
     return state;
@@ -52,7 +44,7 @@ static err_t tcp_server_close(void *arg) {
         tcp_err(state->client_pcb, NULL);
         err = tcp_close(state->client_pcb);
         if (err != ERR_OK) {
-            DEBUG_printf("DEBUG close failed %d, calling abort\n", err);
+            DEBUG_PRINT("DEBUG close failed %d, calling abort\r\n", err);
             tcp_abort(state->client_pcb);
             err = ERR_ABRT;
         }
@@ -69,15 +61,15 @@ static err_t tcp_server_close(void *arg) {
 static err_t tcp_server_result(void *arg, int status) {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
     if (status == 0) {
-        DEBUG_printf("DEBUG status ok\n");
+        DEBUG_PRINT("DEBUG status ok\r\n");
     } else {
-        DEBUG_printf("DEBUG status not ok.  closing server in effort to restart. %d\n", status);
+        DEBUG_PRINT("DEBUG status not ok.  closing server in effort to restart. %d\r\n", status);
         err_t etsc = tcp_server_close(arg);
         if(etsc == ERR_OK){
             state->restart_tcp_server = true;
-            DEBUG_printf("DEBUG server closed. flagging request to restart tcp server. %d\n", status);
+            DEBUG_PRINT("DEBUG server closed. flagging request to restart tcp server. %d\r\n", status);
         } else {
-            DEBUG_printf("DEBUG could not close server properly. must manually reboot picow  %d\n", etsc);
+            DEBUG_PRINT("DEBUG could not close server properly. must manually reboot picow  %d\r\n", etsc);
         }
 
     }
@@ -87,14 +79,14 @@ static err_t tcp_server_result(void *arg, int status) {
 
 static err_t tcp_server_sent(void *arg, struct tcp_pcb *tpcb, u16_t len) {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
-    DEBUG_printf("DEBUG tcp_server_sent %u\n", len);
+    DEBUG_PRINT("DEBUG tcp_server_sent %u\r\n", len);
     state->sent_len += len;
 
     if (state->sent_len >= BUF_SIZE) {
 
         // We should get the data back from the client
         state->recv_len = 0;
-        DEBUG_printf("DEBUG Waiting for buffer from client\n");
+        DEBUG_PRINT("DEBUG Waiting for buffer from client\r\n");
     }
 
     return ERR_OK;
@@ -106,7 +98,7 @@ err_t tcp_server_send_data(void *arg, struct tcp_pcb *tpcb)
 
     state->sent_len = 0;
     uint32_t len_buffer_sent = strlen(state->buffer_sent);
-    DEBUG_printf("DEBUG Writing %ld bytes to client\n", len_buffer_sent);
+    DEBUG_PRINT("DEBUG Writing %ld bytes to client\r\n", len_buffer_sent);
     // this method is callback from lwIP, so cyw43_arch_lwip_begin is not required, however you
     // can use this method to cause an assertion in debug mode, if this method is called when
     // cyw43_arch_lwip_begin IS needed
@@ -114,7 +106,7 @@ err_t tcp_server_send_data(void *arg, struct tcp_pcb *tpcb)
     err_t err = tcp_write(tpcb, state->buffer_sent, len_buffer_sent, TCP_WRITE_FLAG_COPY);
 
     if (err != ERR_OK) {
-        DEBUG_printf("DEBUG Failed to write data %d\n", err);
+        DEBUG_PRINT("DEBUG Failed to write data %d\r\n", err);
         return tcp_server_result(arg, -1);
     }
 
@@ -131,7 +123,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     // cyw43_arch_lwip_begin IS needed
     // cyw43_arch_lwip_check();
     if (p->tot_len > 0) {
-        // DEBUG_printf("DEBUG \n\ntcp_server_recv %d/%d err %d\n", p->tot_len, state->recv_len, err);
+        // DEBUG_PRINT("DEBUG \r\n\ntcp_server_recv %d/%d err %d\r\n", p->tot_len, state->recv_len, err);
 
         // todo : buffer len check
 
@@ -145,9 +137,9 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     // Parse the incoming data if a POST request
     if (strncmp(state->buffer_recv, "POST ", 5) == 0) {
         // Find the start of the POST data
-        char *data_start = strstr(state->buffer_recv, "\r\n\r\n") + 4;
+        char *data_start = strstr(state->buffer_recv, "\r\n") + 4;
         // Print the POST data to the console
-        // DEBUG_printf("DEBUG Received POST data: %s\n", data_start);
+        // DEBUG_PRINT("DEBUG Received POST data: %s\r\n", data_start);
 
         char page, tp;
         int num, val;
@@ -172,11 +164,11 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
         
             default :
                 val = -1;
-                DEBUG_printf("DEBUG handleGetValues bad value type %c\n", tp);
+                DEBUG_PRINT("DEBUG handleGetValues bad value type %c\r\n", tp);
                 
             }
 
-            DEBUG_printf("DEBUG handleGetValues page = %c, num = %d, tp = %c, val = %d\n", page, num, tp, val);
+            DEBUG_PRINT("DEBUG handleGetValues page = %c, num = %d, tp = %c, val = %d\r\n", page, num, tp, val);
 
         } else if (strncmp(data_start, "setvalue", 8) == 0){
 
@@ -201,39 +193,39 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
                 break; 
 
             default :
-                DEBUG_printf("DEBUG handleSetValues bad value type %c\n", tp);
+                DEBUG_PRINT("DEBUG handleSetValues bad value type %c\r\n", tp);
                 
             }
             
-            DEBUG_printf("DEBUG handleSetValues page = %c, num = %d, tp = %c, val = %d\n", page, num, tp, val);
+            DEBUG_PRINT("DEBUG handleSetValues page = %c, num = %d, tp = %c, val = %d\r\n", page, num, tp, val);
 
         } else {
-            DEBUG_printf("DEBUG  recieved post other than setvalue or getvalue\n");
+            DEBUG_PRINT("DEBUG  recieved post other than setvalue or getvalue\r\n");
         }
 
         char  str_val[32];
         sprintf(str_val, "%d", val);
-        DEBUG_printf("DEBUG string val: %s\n",str_val);
+        DEBUG_PRINT("DEBUG string val: %s\r\n",str_val);
         // Send the value to the client
  
         snprintf(state->buffer_sent, sizeof(state->buffer_sent), 
             "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: \
-            *\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\n\r\n%s", 
+            *\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\n%s", 
             strlen(str_val), str_val);
-        // DEBUG_printf("DEBUG %s\n",state->buffer_sent);
+        // DEBUG_PRINT("DEBUG %s\r\n",state->buffer_sent);
         return tcp_server_send_data(arg, state->client_pcb);       
 
 
     } else {
-        DEBUG_printf("DEBUG  recieve TCP not HTTP POST");
+        DEBUG_PRINT("DEBUG  recieve TCP not HTTP POST");
     }
     return ERR_OK;
 }
 
 static err_t tcp_server_poll(void *arg, struct tcp_pcb *tpcb) {
-    #if DEBUG_MAIN
+    #ifdef DEBUG
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
-    DEBUG_printf("DEBUG tcp_server_poll_fn: %d\n", ++state->poll_counter);
+    DEBUG_PRINT("DEBUG tcp_server_poll_fn: %d\r\n", ++state->poll_counter);
     #endif
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, !cyw43_arch_gpio_get(CYW43_WL_GPIO_LED_PIN));
     // return tcp_server_result(arg, -1); // no response is an error?
@@ -242,7 +234,7 @@ static err_t tcp_server_poll(void *arg, struct tcp_pcb *tpcb) {
 
 static void tcp_server_err(void *arg, err_t err) {
     if (err != ERR_ABRT) {
-        DEBUG_printf("DEBUG tcp_client_err_fn %d\n", err);
+        DEBUG_PRINT("DEBUG tcp_client_err_fn %d\r\n", err);
         tcp_server_result(arg, err);
     }
 }
@@ -250,11 +242,11 @@ static void tcp_server_err(void *arg, err_t err) {
 static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err) {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
     if (err != ERR_OK || client_pcb == NULL) {
-        DEBUG_printf("DEBUG Failure in accept\n");
+        DEBUG_PRINT("DEBUG Failure in accept\r\n");
         tcp_server_result(arg, err);
         return ERR_VAL;
     }
-    DEBUG_printf("DEBUG Client connected\n");
+    DEBUG_PRINT("DEBUG Client connected\r\n");
 
     state->client_pcb = client_pcb;
     tcp_arg(client_pcb, state);
@@ -268,23 +260,23 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
 
 static bool tcp_server_open(void *arg) {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
-    DEBUG_printf("DEBUG Starting server at %s on port %u\n", ip4addr_ntoa(netif_ip4_addr(netif_list)), TCP_PORT);
+    DEBUG_PRINT("DEBUG Starting server at %s on port %u\r\n", ip4addr_ntoa(netif_ip4_addr(netif_list)), TCP_PORT);
 
     struct tcp_pcb *pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
     if (!pcb) {
-        DEBUG_printf("DEBUG failed to create pcb\n");
+        DEBUG_PRINT("DEBUG failed to create pcb\r\n");
         return false;
     }
 
     err_t err = tcp_bind(pcb, NULL, TCP_PORT);
     if (err) {
-        DEBUG_printf("DEBUG failed to bind to port %u\n", TCP_PORT);
+        DEBUG_PRINT("DEBUG failed to bind to port %u\r\n", TCP_PORT);
         return false;
     }
 
     state->server_pcb = tcp_listen_with_backlog(pcb, 1);
     if (!state->server_pcb) {
-        DEBUG_printf("DEBUG failed to listen\n");
+        DEBUG_PRINT("DEBUG failed to listen\r\n");
         if (pcb) {
             tcp_close(pcb);
         }
@@ -319,7 +311,7 @@ void run_tcp_server_post(TCP_SERVER_T *state) {
 
         if(state->restart_tcp_server){
             state->restart_tcp_server = false;
-            printf("request recieved to restart server.\n");
+            printf("request recieved to restart server.\r\n");
             run_tcp_server_post(state);
         }
     }
