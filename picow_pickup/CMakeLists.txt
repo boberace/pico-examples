@@ -16,6 +16,7 @@ target_link_libraries(picow_pickup_background
         pico_stdlib
         hardware_i2c
         pico_lwip_mdns
+        pico_multicore
         )
 
 pico_add_extra_outputs(picow_pickup_background)
@@ -40,6 +41,7 @@ target_link_libraries(picow_pickup_poll
         pico_stdlib
         hardware_i2c
         pico_lwip_mdns
+        pico_multicore
         )
 pico_add_extra_outputs(picow_pickup_poll)
 pico_enable_stdio_usb(picow_pickup_poll 0)

@@ -8,6 +8,7 @@
 
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
+#include "pico/multicore.h"
 
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
@@ -99,15 +100,23 @@ void setup_st_pins();
 void setup_dac();
 void setup_adc();
 
+void core1_entry() {
+
+    while (1) {
+        curr_millis = to_ms_since_boot(get_absolute_time());
+        if ((curr_millis - previous_millis) > 500){
+            previous_millis = curr_millis;
+            gpio_put(SLED_PIN, !gpio_get(SLED_PIN));
+        }
+    }
+}
+
+// core0 loop
 void tcp_server_post_loop(){ 
     // this is the loop that runs after the tcp server is started
     // it is called from the tcp server thread
     // run non time critical functions here
-    curr_millis = to_ms_since_boot(get_absolute_time());
-    if ((curr_millis - previous_millis) > 500){
-        previous_millis = curr_millis;
-        gpio_put(SLED_PIN, !gpio_get(SLED_PIN));
-    }
+
 }
 
 int main() {
@@ -153,11 +162,13 @@ int main() {
         DEBUG_PRINT("Connected.\r\n");
     }
 
+    multicore_launch_core1(core1_entry);
+
     mdns_picow_init();
 
     TCP_SERVER_T *state;
     state->restart_tcp_server = false;
-    state->poll_counter = 0;
+    state->poll_counter = 0;    
 
     run_tcp_server_post(state);        
 
