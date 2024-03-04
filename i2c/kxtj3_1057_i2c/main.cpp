@@ -7,6 +7,7 @@
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 #include "kxtj3_1057_i2c.h"
+#include <math.h>
 
 const static uint I2C0_BUADRATE = 400*1000;
 const static uint8_t PIN_I2C0_SDA = 26;
@@ -34,35 +35,14 @@ int main() {
         printf("kxtj3 begin error %i, 0x%02x\n", begin, begin);
     }
 
-    printf("\n");
-    uint32_t pt = to_ms_since_boot(get_absolute_time());
     while(true){     
-
-
-    uint32_t ct = to_ms_since_boot(get_absolute_time());
-    if(ct - pt >= 500){  
-        pt = ct;
-        printf("\033[A\033[2K\rkxtj3 demo running %llu seconds since boot\n", ct/1000000);
-
         axes a;
         int ret = kxtj3.get_accel_data(&a);
         if(ret == PICO_OK){
-            printf("\033[B\033[2K\r x: %f, y: %f, z: %f\n", a.x, a.y, a.z);
-            for (int i = 7; i >= 0; i--) { printf("%d", (a.x_h >> i) & 1); }
-            for (int i = 7; i >= 0; i--) { printf("%d", (a.x_l >> i) & 1); }
-            printf(" ");
-            for (int i = 7; i >= 0; i--) { printf("%d", (a.y_h >> i) & 1); }
-            for (int i = 7; i >= 0; i--) { printf("%d", (a.y_l >> i) & 1); }
-            printf(" ");
-            for (int i = 7; i >= 0; i--) { printf("%d", (a.z_h >> i) & 1); }
-            for (int i = 7; i >= 0; i--) { printf("%d", (a.z_l >> i) & 1); }
-        } else {
-            printf("\033[B\033[2K\rkxtj3 get_accel_data error %i, 0x%02x\n", ret, ret);
-        }
-        printf("\033[2A");  // Move the cursor up to keep time since boot as the first line
-    }
-
-
+            int mag = round(100*sqrt(a.x*a.x + a.y*a.y + a.z*a.z));
+            printf("%i\n",mag);
+        } 
+        
     }
     return 0;
 }
