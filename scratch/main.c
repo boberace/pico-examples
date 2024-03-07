@@ -11,6 +11,7 @@
 #define PIN_MON_BUF_SIZE 1024
 
 uint32_t pin1_mon_buf[PIN_MON_BUF_SIZE];
+uint32_t * p_pin1_mon_buf = pin1_mon_buf;
 uint DMA_PIN_MON_DAT_CHAN = 0;
 
 void blink_pin_forever( uint pin, float freq);
@@ -48,7 +49,7 @@ void blink_pin_forever(uint pin, float freq) {
     pin_blink_program_init(pio, sm, offset, pin);
     pio_sm_set_enabled(pio, sm, true);
 
-    printf("Blinking pin %d at %d Hz\n", pin, freq);
+    printf("Blinking pin %d at %f Hz\n", pin, freq);
 
     // PIO counter program takes 3 more cycles in total than we pass as
     // input (wait for n + 1; mov; jmp)
@@ -78,7 +79,7 @@ void monitor_pin_forever(uint pin) {
     channel_config_set_write_increment(&config, true);
     channel_config_set_dreq(&config, DREQ_PIO0_TX0 + sm);
     // channel_config_set_ring(&config, true, 2);  // Set up a ring buffer with a size of 2
-    dma_channel_configure(DMA_PIN_MON_DAT_CHAN, &config, pin1_mon_buf, &timer_hw->timelr, PIN_MON_BUF_SIZE, false);
+    dma_channel_configure(DMA_PIN_MON_DAT_CHAN, &config, &p_pin1_mon_buf, &timer_hw->timerawl, PIN_MON_BUF_SIZE, false);
 
     printf("Monitoring pin %d\n", pin);
 }
