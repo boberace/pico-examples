@@ -1,6 +1,9 @@
 .program pin_monitor
-
+    set pins, 1
     wait 0 pin 0
     pull noblock
+    set pins, 0
     wait 1 pin 0
     pull noblock
+
+

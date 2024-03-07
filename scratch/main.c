@@ -8,11 +8,18 @@
 #include "pin_monitor.pio.h"
 
 
-#define PIN_MON_BUF_SIZE 1024
 
+#define CAPTURE_PIN 15
+#define PIN_MON_BUF_SIZE 10
+const uint num_pin_mon_transfers = PIN_MON_BUF_SIZE;
 uint32_t pin1_mon_buf[PIN_MON_BUF_SIZE];
+
 uint32_t * p_pin1_mon_buf = pin1_mon_buf;
-uint DMA_PIN_MON_DAT_CHAN = 0;
+
+uint32_t test_num = 123456789;
+
+uint dma_data_cptr_chan = 0;
+uint dma_data_ctrl_chan = 1;
 
 void blink_pin_forever( uint pin, float freq);
 void pin_blink_program_init(PIO pio, uint sm, uint offset, uint pin);
@@ -22,16 +29,16 @@ void monitor_pin_forever(uint pin);
 int main() {
     stdio_init_all();
 
-    blink_pin_forever( 6, 10);
-    monitor_pin_forever( 6);
+    blink_pin_forever( CAPTURE_PIN, 2);   
+    monitor_pin_forever( CAPTURE_PIN + 1);
 
-    dma_channel_start(DMA_PIN_MON_DAT_CHAN);
+    dma_channel_start(dma_data_ctrl_chan);
 
     uint counter = 1;
     while (1)
     {
         uint32_t delta = pin1_mon_buf[counter]-pin1_mon_buf[counter-1];
-        printf("\033[A\33[2K\rblink pio, %i, %i, %i\n", counter, pin1_mon_buf[counter], delta);
+        printf("\033[A\33[2K\rblink pio, %d, %d, %d\n", counter, pin1_mon_buf[counter], delta);
         sleep_ms(1000);
         counter++;
     }
@@ -44,12 +51,9 @@ void blink_pin_forever(uint pin, float freq) {
 
     uint sm = pio_claim_unused_sm(pio, true);
     uint offset = pio_add_program(pio, &pin_blink_program);
-    printf("Loaded program at %d\n", offset);
 
     pin_blink_program_init(pio, sm, offset, pin);
     pio_sm_set_enabled(pio, sm, true);
-
-    printf("Blinking pin %d at %f Hz\n", pin, freq);
 
     // PIO counter program takes 3 more cycles in total than we pass as
     // input (wait for n + 1; mov; jmp)
@@ -65,30 +69,59 @@ void pin_blink_program_init(PIO pio, uint sm, uint offset, uint pin) {
 }
 
 void monitor_pin_forever(uint pin) {
+
     PIO pio = pio0;
+
     uint sm = pio_claim_unused_sm(pio, true);
     uint offset = pio_add_program(pio, &pin_monitor_program);
-    printf("Loaded program at %d\n", offset);
 
     pin_monitor_program_init(pio, sm, offset, pin);
     pio_sm_set_enabled(pio, sm, true);
     
-    dma_channel_config config = dma_channel_get_default_config(DMA_PIN_MON_DAT_CHAN);
-    channel_config_set_transfer_data_size(&config, DMA_SIZE_32);
-    channel_config_set_read_increment(&config, false);
-    channel_config_set_write_increment(&config, true);
-    channel_config_set_dreq(&config, DREQ_PIO0_TX0 + sm);
+    dma_channel_config data_capture_cfg = dma_channel_get_default_config(dma_data_cptr_chan);
+    channel_config_set_transfer_data_size(&data_capture_cfg, DMA_SIZE_32);
+    channel_config_set_read_increment(&data_capture_cfg, false);
+    channel_config_set_write_increment(&data_capture_cfg, true);
+    channel_config_set_dreq(&data_capture_cfg, DREQ_PIO0_TX0 + sm);
     // channel_config_set_ring(&config, true, 2);  // Set up a ring buffer with a size of 2
-    dma_channel_configure(DMA_PIN_MON_DAT_CHAN, &config, &p_pin1_mon_buf, &timer_hw->timerawl, PIN_MON_BUF_SIZE, false);
+    channel_config_set_chain_to(&data_capture_cfg, dma_data_ctrl_chan);
+    dma_channel_configure(
+        dma_data_cptr_chan, 
+        &data_capture_cfg, 
+        NULL, // programed by dma_data_ctrl_chan        
+        &test_num, // &timer_hw->timerawl, 
+        num_pin_mon_transfers, 
+        false
+    );
+
+    dma_channel_config data_control_cfg = dma_channel_get_default_config(dma_data_ctrl_chan);   
+    channel_config_set_transfer_data_size(&data_control_cfg, DMA_SIZE_32);                   
+    channel_config_set_read_increment(&data_control_cfg, false);                             
+    channel_config_set_write_increment(&data_control_cfg, false);
+
+    dma_channel_configure( 
+        dma_data_ctrl_chan, //channel – DMA channel
+        &data_control_cfg, // config – Pointer to DMA config structure
+        &dma_hw->ch[dma_data_cptr_chan].al2_write_addr_trig, // write_addr – Initial write address
+        &p_pin1_mon_buf, // read_addr – Initial read address
+        1, // transfer_count – Number of transfers to perform
+        false // trigger – True to start the transfer immediately
+    );    
 
     printf("Monitoring pin %d\n", pin);
 }
 
 void pin_monitor_program_init(PIO pio, uint sm, uint offset, uint pin) {
     pio_sm_config c = pin_monitor_program_get_default_config(offset);
+
+    uint bpin = pin + 1;
+    pio_gpio_init(pio, bpin);
+    pio_sm_set_consecutive_pindirs(pio, sm, bpin, 1, true);
+    sm_config_set_set_pins(&c, bpin, 1);
+
     sm_config_set_in_pins(&c, pin);
-    sm_config_set_out_shift(&c, false, false, 0);
-    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+    sm_config_set_out_shift(&c, false, false, 0);    
+    // sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, true);
 }
