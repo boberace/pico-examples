@@ -25,7 +25,7 @@ PIO PIO_BLINK = pio0;  // blink program pio
 #define SM_TEST 0     // test program state machine
 PIO PIO_TEST = pio1;  // test program pio
 
-void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, uint freq);
+void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, float freq);
 void test_pin_forever(PIO pio, uint sm, uint offset, uint in_pin, uint out_pin_base, uint num_pins);
 
 int main() {
@@ -48,7 +48,7 @@ int main() {
     
 }
 
-void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, uint freq) {
+void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, float freq) {
     blink_program_init(pio, sm, offset, pin);
     pio_sm_set_enabled(pio, sm, true);
 
@@ -56,7 +56,7 @@ void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, uint freq) {
 
     // PIO counter program takes 3 more cycles in total than we pass as
     // input (wait for n + 1; mov; jmp)
-    pio->txf[sm] = (clock_get_hz(clk_sys) / (2 * freq)) - 3;
+    pio->txf[sm] = (uint)(clock_get_hz(clk_sys) / (2 * freq)) - 3;
 }
 
 void test_pin_forever(PIO pio, uint sm, uint offset, uint in_pin, uint out_pin_base, uint num_pins) {

@@ -1,0 +1,5 @@
+.program pin_monitor
+wait 0 pin 0
+pull
+wait 1 pin 0
+pull

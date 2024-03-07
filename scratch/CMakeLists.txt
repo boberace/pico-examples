@@ -1,17 +1,18 @@
-add_executable(adc_spi_pio)
+add_executable(pio_blink_test)
 
-pico_generate_pio_header(adc_spi_pio ${CMAKE_CURRENT_LIST_DIR}/spi.pio)
+# by default the header is generated into the build dir
+pico_generate_pio_header(pio_blink_test ${CMAKE_CURRENT_LIST_DIR}/pin_blink.pio)
+pico_generate_pio_header(pio_blink_test ${CMAKE_CURRENT_LIST_DIR}/pin_monitor.pio)
 
-target_sources(adc_spi_pio PRIVATE
-        main.c
-        pio_spi.c
-        pio_spi.h
-        )
+target_sources(pio_blink_test PRIVATE main.c)
 
-target_link_libraries(adc_spi_pio PRIVATE pico_stdlib hardware_pio)
-pico_add_extra_outputs(adc_spi_pio)
+target_link_libraries(pio_blink_test PRIVATE pico_stdlib hardware_pio hardware_dma)
 
-example_auto_set_url(adc_spi_pio)
+pico_add_extra_outputs(pio_blink_test)
 
-pico_enable_stdio_usb(adc_spi_pio 0)
-pico_enable_stdio_uart(adc_spi_pio 1)
+# add url via pico_set_program_url
+example_auto_set_url(pio_blink_test)
+
+# enable usb output, disable uart output
+pico_enable_stdio_usb(pio_blink_test 1)
+pico_enable_stdio_uart(pio_blink_test 0)
