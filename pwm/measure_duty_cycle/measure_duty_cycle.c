@@ -13,8 +13,8 @@
 // This example drives a PWM output at a range of duty cycles, and uses
 // another PWM slice in input mode to measure the duty cycle. You'll need to
 // connect these two pins with a jumper wire:
-const uint OUTPUT_PIN = 2;
-const uint MEASURE_PIN = 5;
+const uint OUTPUT_PIN = 15;
+const uint MEASURE_PIN = 1;
 
 float measure_duty_cycle(uint gpio) {
     // Only the PWM B pins can be used as inputs.
@@ -46,6 +46,7 @@ const float test_duty_cycles[] = {
 
 int main() {
     stdio_init_all();
+    sleep_ms(2000);
     printf("\nPWM duty cycle measurement example\n");
 
     // Configure PWM slice and set it running
@@ -69,4 +70,16 @@ int main() {
         printf("Output duty cycle = %.1f%%, measured input duty cycle = %.1f%%\n",
                output_duty_cycle * 100.f, measured_duty_cycle * 100.f);
     }
+
+
+    uint counter = 1;
+    while (1)
+    {
+
+        printf("\033[A\33[2K\r measure duty cycle completed, %d\n", counter);
+        sleep_ms(1000);
+
+        counter++;
+    }
+
 }

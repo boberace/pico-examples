@@ -17,6 +17,8 @@ uint32_t pin1_mon_buf[PIN_MON_BUF_SIZE];
 uint32_t * p_pin1_mon_buf = pin1_mon_buf;
 
 uint32_t test_num = 123456789;
+uint32_t test_array[] = {9,8,7,6,5,4,3,2,1,0};
+uint32_t * p_test_array = test_array;
 
 uint dma_data_cptr_chan = 0;
 uint dma_data_ctrl_chan = 1;
@@ -29,7 +31,7 @@ void monitor_pin_forever(uint pin);
 int main() {
     stdio_init_all();
 
-    blink_pin_forever( CAPTURE_PIN, 2);   
+    blink_pin_forever( CAPTURE_PIN, 3);   
     monitor_pin_forever( CAPTURE_PIN + 1);
 
     dma_channel_start(dma_data_ctrl_chan);
@@ -37,10 +39,12 @@ int main() {
     uint counter = 1;
     while (1)
     {
-        uint32_t delta = pin1_mon_buf[counter]-pin1_mon_buf[counter-1];
+        uint32_t delta = pin1_mon_buf[counter]-pin1_mon_buf[counter==0?PIN_MON_BUF_SIZE-1:counter];
         printf("\033[A\33[2K\rblink pio, %d, %d, %d\n", counter, pin1_mon_buf[counter], delta);
         sleep_ms(1000);
+
         counter++;
+        counter%=PIN_MON_BUF_SIZE;
     }
 
 }
@@ -70,7 +74,7 @@ void pin_blink_program_init(PIO pio, uint sm, uint offset, uint pin) {
 
 void monitor_pin_forever(uint pin) {
 
-    PIO pio = pio0;
+    PIO pio = pio1;
 
     uint sm = pio_claim_unused_sm(pio, true);
     uint offset = pio_add_program(pio, &pin_monitor_program);
@@ -80,16 +84,16 @@ void monitor_pin_forever(uint pin) {
     
     dma_channel_config data_capture_cfg = dma_channel_get_default_config(dma_data_cptr_chan);
     channel_config_set_transfer_data_size(&data_capture_cfg, DMA_SIZE_32);
-    channel_config_set_read_increment(&data_capture_cfg, false);
+    channel_config_set_read_increment(&data_capture_cfg, true);
     channel_config_set_write_increment(&data_capture_cfg, true);
-    channel_config_set_dreq(&data_capture_cfg, DREQ_PIO0_TX0 + sm);
+    channel_config_set_dreq(&data_capture_cfg, DREQ_PIO1_TX0 + sm);
     // channel_config_set_ring(&config, true, 2);  // Set up a ring buffer with a size of 2
     channel_config_set_chain_to(&data_capture_cfg, dma_data_ctrl_chan);
     dma_channel_configure(
         dma_data_cptr_chan, 
         &data_capture_cfg, 
         NULL, // programed by dma_data_ctrl_chan        
-        &test_num, // &timer_hw->timerawl, 
+        &p_test_array, // &timer_hw->timerawl, 
         num_pin_mon_transfers, 
         false
     );

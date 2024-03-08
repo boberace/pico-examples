@@ -10,3 +10,5 @@ pico_add_extra_outputs(pwm_measure_duty_cycle)
 
 # add url via pico_set_program_url
 example_auto_set_url(pwm_measure_duty_cycle)
+pico_enable_stdio_usb(pwm_measure_duty_cycle 1)
+pico_enable_stdio_uart(pwm_measure_duty_cycle 0)
