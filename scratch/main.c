@@ -7,27 +7,28 @@
 #include "pin_blink.pio.h"
 #include "pin_monitor.pio.h"
 
-#define CAPTURE_PIN 15
+#define TEST_PIN 15
+#define CAPTURE_PIN 16
+#define DUBUG_PIN (CAPTURE_PIN + 1) // placeholder for relative use in pio program
 #define PIN_MON_BUF_SIZE (1 << 13) // 8192 samples
 #define PIN_MON_BYTES_SIZE (PIN_MON_BUF_SIZE * 4) // 32 bit per sample (4 bytes)
-#define CAPTURE_RING_BITS 15 // log2(PIN_MON_BYTES_SIZE)
+#define CAPTURE_RING_BITS 15 // log2(PIN_MON_BYTES_SIZE) - must be integer
 
 uint32_t pin1_mon_buf[PIN_MON_BUF_SIZE] __attribute__((aligned(PIN_MON_BYTES_SIZE)));
-uint32_t * p_pin1_mon_buf = pin1_mon_buf;
 
 uint dma_data_cptr_chan = 0;
 uint dma_data_ctrl_chan = 1;
 
 void blink_pin_forever( uint pin, float freq);
 void pin_blink_program_init(PIO pio, uint sm, uint offset, uint pin);
-void pin_monitor_program_init(PIO pio, uint sm, uint offset, uint pin);
 void monitor_pin_forever(uint pin);
+void pin_monitor_program_init(PIO pio, uint sm, uint offset, uint pin);
 
 int main() {
     stdio_init_all();
 
-    blink_pin_forever( CAPTURE_PIN, 2);   
-    monitor_pin_forever( CAPTURE_PIN + 1);
+    blink_pin_forever(TEST_PIN, 2);   
+    monitor_pin_forever(CAPTURE_PIN);
 
     dma_channel_start(dma_data_cptr_chan); 
     uint counter = 1;
@@ -82,30 +83,15 @@ void monitor_pin_forever(uint pin) {
     channel_config_set_read_increment(&data_capture_cfg, false);
     channel_config_set_write_increment(&data_capture_cfg, true);
     channel_config_set_dreq(&data_capture_cfg, DREQ_PIO1_RX0 + sm);
-    // channel_config_set_chain_to(&data_capture_cfg, dma_data_ctrl_chan);
     channel_config_set_ring(&data_capture_cfg, true, CAPTURE_RING_BITS);
     dma_channel_configure(
         dma_data_cptr_chan, 
         &data_capture_cfg, 
-        pin1_mon_buf, // programed by dma_data_ctrl_chan        
+        pin1_mon_buf,        
         &pio->rxf[sm], 
         PIN_MON_BUF_SIZE, 
         false
     );
-
-    // dma_channel_config data_control_cfg = dma_channel_get_default_config(dma_data_ctrl_chan);   
-    // channel_config_set_transfer_data_size(&data_control_cfg, DMA_SIZE_32);                   
-    // channel_config_set_read_increment(&data_control_cfg, false);                             
-    // channel_config_set_write_increment(&data_control_cfg, false);
-
-    // dma_channel_configure( 
-    //     dma_data_ctrl_chan, //channel – DMA channel
-    //     &data_control_cfg, // config – Pointer to DMA config structure
-    //     &dma_hw->ch[dma_data_cptr_chan].al2_write_addr_trig, // write_addr – Initial write address
-    //     &p_pin1_mon_buf, // read_addr – Initial read address
-    //     1, // transfer_count – Number of transfers to perform
-    //     false // trigger – True to start the transfer immediately
-    // );    
 
     printf("Monitoring pin %d\n", pin);
 }
@@ -124,6 +110,9 @@ void pin_monitor_program_init(PIO pio, uint sm, uint offset, uint pin) {
     sm_config_set_in_shift(&c, false, false, 32);
     // don't join FIFO's
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_NONE); 
+    // set up to create microsecond tics
+    float div = (float)clock_get_hz(clk_sys) / 8 / (1000 * 1000); // 8 pio cycles per sample / (1MHz)
+    sm_config_set_clkdiv(&c, div);
 
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, true);
