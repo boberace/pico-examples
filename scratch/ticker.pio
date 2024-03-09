@@ -1,7 +1,6 @@
-.program pin_monitor
+.program ticker
 ; the code must be loaded at address 0, because it uses computed jumps
 .origin 0
-.side_set 1 opt
 
 ; this code monitors a pin and continuously updates a ticker counter
 ; when the pin changes state, it outputs the tic value
