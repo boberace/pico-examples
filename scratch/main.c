@@ -13,9 +13,8 @@
 #define CAPTURE_PIN 16
 #define DUBUG_PIN (CAPTURE_PIN + 1) // placeholder for relative use in pio program
 
-#define SAMPLE_RESOLUTION 1000*1000 // samples per second
-#define SAMPLE_TIME 0.025 // in seconds 
-#define SAMPLE_DEPTH (SAMPLE_RESOLUTION * SAMPLE_TIME) 
+#define SAMPLE_RESOLUTION 10*1000*1000 // samples per second (0.1 millisecond resolution)
+#define SAMPLE_DEPTH (1 << 20) // about 105 milliseconds for 10MHz sample rate
 
 #define PIN_MON_BUF_BITS 7 // min 2 
 #define PIN_MON_TYPE_BITS 2 // (0 = 8bit/1byte, 1 = 16bit/2byte, 2 = 32bit/4byte) no 64bit/8byte for DMA
@@ -29,17 +28,18 @@ uint32_t pin1_mon_buf[PIN_MON_BUF_SIZE] __attribute__((aligned(PIN_MON_BYTES_SIZ
 uint32_t pin_mon_buf_cpy[PIN_MON_BUF_SIZE] __attribute__((aligned(PIN_MON_BYTES_SIZE))); // must align for circular DMA
 
 uint dma_data_cptr_chan = 0;
-uint dma_data_ctrl_chan = 1;
+// uint dma_data_ctrl_chan = 1;
 
 void blink_pin_forever( uint pin, float freq);
 void pin_blink_program_init(PIO pio, uint sm, uint offset, uint pin);
 void monitor_pin_forever(uint pin, uint32_t *buf);
 void pin_monitor_program_init(PIO pio, uint sm, uint offset, uint pin);
+uint32_t find_fundamental(uint32_t *buf, int dma_chan);
 
 int main() {
     stdio_init_all();
 
-    blink_pin_forever(TEST_PIN, 100);   
+    blink_pin_forever(TEST_PIN, 15);   
     monitor_pin_forever(CAPTURE_PIN, pin1_mon_buf);
 
     dma_channel_start(dma_data_cptr_chan); 
@@ -50,14 +50,16 @@ int main() {
         // uint pcounter = counter==0?PIN_MON_BUF_SIZE-1:counter-1;
         // uint32_t delta = pin1_mon_buf[counter]-pin1_mon_buf[pcounter];
         // printf("\033[A\33[2K\rblink pio, index %d, val %d, diff %d\n", counter,  pin1_mon_buf[counter], delta);
-        
+
+        uint32_t fun = find_fundamental(pin1_mon_buf, dma_data_cptr_chan);
+        printf("bindex %u, %u\n", fun, SAMPLE_DEPTH);
         for (size_t i = 0; i < PIN_MON_BUF_SIZE; i++)
         {
-            printf("index %d, val %d\n", i, pin1_mon_buf[i]);
+            printf("index %3d, %10u, %8u\n", i, pin1_mon_buf[i], pin_mon_buf_cpy[i]);
         }
         
 
-        sleep_ms(10000);
+        sleep_ms(5000);
         printf("\033[H\033[J");
         counter++;
         counter%=PIN_MON_BUF_SIZE;
@@ -141,9 +143,9 @@ void pin_monitor_program_init(PIO pio, uint sm, uint offset, uint pin) {
 // SAMPLE_DEPTH
 
 uint32_t find_fundamental(uint32_t *buf, int dma_chan){
-    uint32_t fundamental;
+    uint32_t fundamental = 0;
     uint32_t transfer_count = dma_hw->ch[dma_chan].transfer_count;
-    uint32_t index = (0xFFFFFFFF - transfer_count) % PIN_MON_BUF_SIZE + 1;  
+    uint32_t index = (0xFFFFFFFF - transfer_count) % PIN_MON_BUF_SIZE;  
 
     uint first_value = buf[index];
     for(int i = 0; i < PIN_MON_BUF_SIZE; i++){
@@ -151,17 +153,19 @@ uint32_t find_fundamental(uint32_t *buf, int dma_chan){
         pin_mon_buf_cpy[i] = buf[index] - first_value;
 
         index++;
-        index%=PIN_MON_BUF_SIZE;  
+        if(index == PIN_MON_BUF_SIZE)
+            index = 0;  
     }
 
     uint bindex = 0;
+    uint last_value = pin_mon_buf_cpy[PIN_MON_BUF_SIZE - 1];
     for(bindex = PIN_MON_BUF_SIZE - 1; bindex >= 0; bindex--){
         
-        if (pin_mon_buf_cpy[bindex] - SAMPLE_DEPTH <= 0){
-            bindex++;
+        if (last_value - pin_mon_buf_cpy[bindex] >= SAMPLE_DEPTH){
             break;
         }
     }   
+    
     if(bindex == 0) // too much noise
         return 0;
 
@@ -169,7 +173,11 @@ uint32_t find_fundamental(uint32_t *buf, int dma_chan){
         return 0;
 
     // start searching for fundamental
+    for(int i = bindex; i < PIN_MON_BUF_SIZE; i++){
 
-    return fundamental;
+
+    }
+
+    return bindex;
 }
 
