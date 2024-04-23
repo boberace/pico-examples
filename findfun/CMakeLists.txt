@@ -1,4 +1,5 @@
 if (NOT PICO_NO_HARDWARE)
     add_subdirectory(example)
     add_subdirectory(instrutune)
+    add_subdirectory(picotuner)
 endif ()

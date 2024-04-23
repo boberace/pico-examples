@@ -1,0 +1,13 @@
+; simple charlieplex program written for low instruction count
+; each led will light up 32/34 = 94% of time
+; create array of alternating pin directions and high pin in binary format
+
+
+.program charlieplex   
+set x, 0
+.wrap_target
+    mov pins, x
+    out pindirs, 32  
+    out pins, 32 [31]
+.wrap
+

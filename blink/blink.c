@@ -6,7 +6,7 @@
 
 #include "pico/stdlib.h"
 #include <stdio.h>
-// #define LED_16_ARRAY
+#define LED_16_ARRAY
 
 int main() {
     stdio_init_all();
@@ -14,7 +14,7 @@ int main() {
     // #ifndef PICO_DEFAULT_LED_PIN
     // #warning blink example requires a board with a regulareb LED
     // #else
-        const uint LED_PIN = 15;
+        const uint LED_PIN = 25;
         gpio_init(LED_PIN);
         gpio_set_dir(LED_PIN, GPIO_OUT);
         while (true) {
@@ -32,7 +32,7 @@ int main() {
     // #endif
 #else
 
-    for(auto i = 0; i < 16 ; ++i){
+    for(auto i = 0; i < 15 ; ++i){
         gpio_init(i);
         gpio_set_dir(i, GPIO_OUT);
     }
