@@ -1,0 +1,15 @@
+; led strobe
+; pio clocks in samples to the ISR and then moves to the strobe pins
+; there are x clock cycles per sample into input shift register
+
+.program strobe
+.wrap_target
+    set x, 14           ; set x to number of leds - 2
+    mov pins, isr
+    mov isr, null
+loop:
+    in pins, 1  [13]
+    jmp x--, loop    
+    in pins, 1  [11]
+.wrap
+
