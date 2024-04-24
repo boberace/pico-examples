@@ -10,115 +10,106 @@
 #define PIN_CA2 12
 #define PIN_MTR_ENA 16
 
-#define PIN_HALL_CEN 15
-#define PIN_HALL_BTW 14
+#define PIN_HALL_CEN 15 // on left
+#define PIN_HALL_BTW 14 // on right
 
 #define PIN_PIEZO 28
 
 #define PIN_STROBE 16
 #define PIN_LED 25
 
+void blink_pin_forever(uint pin, float freq);
+void pin_blink_program_init(PIO pio, uint sm, uint offset, uint pin);
+void setup_motor();
+void coil_A(bool a, bool b);
+
 bool clockwise = true;
 bool hall_cen_initial = false;
 bool hall_btw_initial = false;
 bool hall_cen = false;
 bool hall_btw = false;
-bool state = false;
+bool state_A = false;
 
 int main() {
     stdio_init_all();
     sleep_ms(1000);
 
     setup_motor();
+    coil_A(0, 0);
     hall_cen = gpio_get(PIN_HALL_CEN);
     hall_btw = gpio_get(PIN_HALL_BTW);
 
     if (clockwise) {
         if (hall_btw_initial)
         {
-            state = !hall_cen_initial;            
+            state_A = !hall_cen_initial;            
             while(true){
                 hall_cen = gpio_get(PIN_HALL_CEN);
-                if(hall_cen && !state)
+                if(hall_cen && !state_A)
                 {
-                    state = true;
-                    gpio_put(PIN_CA1, 0);
-                    gpio_put(PIN_CA2, 1);              
+                    state_A = true;
+                    coil_A(0, 1);              
                 }
-                else if(!hall_cen && state)
+                else if(!hall_cen && state_A)
                 {
-                    state = false;
-                    gpio_put(PIN_CA1, 1);
-                    gpio_put(PIN_CA2, 0);
+                    state_A = false;
+                    coil_A(1, 0);
                 }
-
             }
         }
         else
         {
-            state = hall_cen_initial;
+            state_A = hall_cen_initial;
             while(true){
                 hall_cen = gpio_get(PIN_HALL_CEN);
-                if(hall_cen && state)
+                if(hall_cen && state_A)
                 {
-                    state = false;
-                    gpio_put(PIN_CA1, 0);
-                    gpio_put(PIN_CA2, 1);
+                    state_A = false;
+                    coil_A(0, 1);
                 }
-                else if(!hall_cen && !state)
+                else if(!hall_cen && !state_A)
                 {
-                    state = true;
-                    gpio_put(PIN_CA1, 1);
-                    gpio_put(PIN_CA2, 0);
+                    state_A = true;
+                    coil_A(1, 0);
                 }
-
             }
-
         }
 
-    } else {
+    } else { // counter clockwise
         if (hall_btw_initial)
         {
-            state = !hall_cen_initial;            
+            state_A = !hall_cen_initial;            
             while(true){
                 hall_cen = gpio_get(PIN_HALL_CEN);
-                if(hall_cen && !state)
+                if(hall_cen && !state_A)
                 {
-                    state = true;
-                    gpio_put(PIN_CA1, 1);
-                    gpio_put(PIN_CA2, 0);              
+                    state_A = true;
+                    coil_A(1, 0);            
                 }
-                else if(!hall_cen && state)
+                else if(!hall_cen && state_A)
                 {
-                    state = false;
-                    gpio_put(PIN_CA1, 0);
-                    gpio_put(PIN_CA2, 1);
+                    state_A = false;
+                    coil_A(0, 1);
                 }
-
             }
         }
         else
         {
-            state = hall_cen_initial;
+            state_A = hall_cen_initial;
             while(true){
                 hall_cen = gpio_get(PIN_HALL_CEN);
-                if(hall_cen && state)
+                if(hall_cen && state_A)
                 {
-                    state = false;
-                    gpio_put(PIN_CA1, 1);
-                    gpio_put(PIN_CA2, 0);
+                    state_A = false;
+                    coil_A(1, 0);
                 }
-                else if(!hall_cen && !state)
+                else if(!hall_cen && !state_A)
                 {
-                    state = true;
-                    gpio_put(PIN_CA1, 0);
-                    gpio_put(PIN_CA2, 1);
+                    state_A = true;
+                    coil_A(0, 1);
                 }
-
             }
-
         }
-
     }
 
 
@@ -171,4 +162,8 @@ void setup_motor() {
 
     gpio_init(PIN_HALL_BTW);
     gpio_set_dir(PIN_HALL_BTW, GPIO_IN);
+}
+void coil_A(bool a, bool b){
+    gpio_put(PIN_CA1, a);
+    gpio_put(PIN_CA2, b);
 }
