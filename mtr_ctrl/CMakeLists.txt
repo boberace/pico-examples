@@ -23,9 +23,9 @@ add_executable(mtr_ctrl_brushed)
 # by default the header is generated into the build dir
 pico_generate_pio_header(mtr_ctrl_brushed ${CMAKE_CURRENT_LIST_DIR}/quadrature_encoder.pio)
 
-target_sources(mtr_ctrl_brushed PRIVATE mtr_ctrl_brushed.c)
+target_sources(mtr_ctrl_brushed PRIVATE mtr_ctrl_brushed.cpp pid.cpp bmc.cpp)
 
-target_link_libraries(mtr_ctrl_brushed PRIVATE pico_stdlib hardware_pio hardware_dma)
+target_link_libraries(mtr_ctrl_brushed PRIVATE pico_stdlib hardware_pio hardware_dma hardware_pwm)
 
 pico_add_extra_outputs(mtr_ctrl_brushed)
 
