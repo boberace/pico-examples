@@ -32,14 +32,45 @@
 // encoder count updated and because of that it supports very high step rates.
 //
 
+
+#define PRINT_PROBE_UART // uncomment to print to uart
+
+#ifdef PRINT_PROBE_UART
+
+#define UART_A_ID uart1
+#define UART_A_BAUD_RATE 115200
+#define UART_A_TX_PIN 16
+#define UART_A_RX_PIN 17
+
+uint setup_uart() {
+    uint uart_ret = uart_init(UART_A_ID, UART_A_BAUD_RATE);
+    gpio_set_function(UART_A_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART_A_RX_PIN, GPIO_FUNC_UART);
+    return uart_ret;
+}
+
+#define BUFFER_SIZE 256
+#define PRINT(...)                     \
+    do {                               \
+        char buffer[BUFFER_SIZE];      \
+        snprintf(buffer, sizeof(buffer), __VA_ARGS__); \
+        uart_puts(UART_A_ID, buffer);      \
+    } while (0)
+#else
+#define PRINT(...) printf(__VA_ARGS__)
+#endif
+
+
+
 int main() {
     int new_value, delta, old_value = 0;
 
     // Base pin to connect the A phase of the encoder.
     // The B phase must be connected to the next pin
-    const uint PIN_AB = 10;
+    const uint PIN_AB = 2;
 
     stdio_init_all();
+    setup_uart();
 
     PIO pio = pio0;
     const uint sm = 0;
@@ -51,7 +82,7 @@ int main() {
 
     while (1) {
         // note: thanks to two's complement arithmetic delta will always
-        // be correct even when new_value wraps around MAXINT / MININT
+        // be correct even when new_value wraps around MAXINT / MININTs
         new_value = quadrature_encoder_get_count(pio, sm);
         delta = new_value - old_value;
         old_value = new_value;
