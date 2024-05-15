@@ -22,6 +22,19 @@
 
 #define TEST_TASK_PRIORITY				( tskIDLE_PRIORITY + 1UL )
 
+// UART 
+#define UART_A_ID uart1
+#define UART_A_BAUD_RATE 115200
+#define UART_A_TX_PIN 16
+#define UART_A_RX_PIN 17
+
+uint setup_uart() {
+    uint uart_ret = uart_init(UART_A_ID, UART_A_BAUD_RATE);
+    gpio_set_function(UART_A_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART_A_RX_PIN, GPIO_FUNC_UART);
+    return uart_ret;
+}
+
 void main_task(__unused void *params) {
     if (cyw43_arch_init()) {
         printf("failed to initialise\n");
@@ -66,6 +79,7 @@ void vLaunch( void) {
 int main( void )
 {
     stdio_init_all();
+    setup_uart();
 
     /* Configure the hardware ready to run the demo. */
     const char *rtos_name;
