@@ -88,7 +88,7 @@ int main( void )
 #else
     rtos_name = "FreeRTOS";
 #endif
-
+    printf("FreeRTOS Ping example using %s\n", rtos_name);
 #if ( portSUPPORT_SMP == 1 ) && ( configNUM_CORES == 2 )
     printf("Starting %s on both cores:\n", rtos_name);
     vLaunch();
