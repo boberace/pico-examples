@@ -7,6 +7,7 @@ execute_process(COMMAND
 add_executable(web_joystick_background
         main.c
         mdns_picow.c
+        # ${CMAKE_CURRENT_LIST_DIR}/../../../../libwebsockets/lib/libwebsockets.c
         )
 target_compile_definitions(web_joystick_background PRIVATE
         WIFI_SSID=\"${WIFI_SSID}\"
@@ -15,6 +16,7 @@ target_compile_definitions(web_joystick_background PRIVATE
 target_include_directories(web_joystick_background PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
         ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts
+        # ${CMAKE_CURRENT_LIST_DIR}/../../../../libwebsockets/lib/
         )
 target_link_libraries(web_joystick_background
         pico_cyw43_arch_lwip_threadsafe_background
@@ -32,6 +34,7 @@ pico_add_extra_outputs(web_joystick_background)
 add_executable(web_joystick_poll
         main.c
         mdns_picow.c
+        # ${CMAKE_CURRENT_LIST_DIR}/../../../../libwebsockets/lib/libwebsockets.c
         )
 target_compile_definitions(web_joystick_poll PRIVATE
         WIFI_SSID=\"${WIFI_SSID}\"
@@ -40,6 +43,7 @@ target_compile_definitions(web_joystick_poll PRIVATE
 target_include_directories(web_joystick_poll PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
         ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts
+        # ${CMAKE_CURRENT_LIST_DIR}/../../../../libwebsockets/lib/
         )
 target_link_libraries(web_joystick_poll
         pico_cyw43_arch_lwip_threadsafe_background

@@ -4,13 +4,17 @@
 #include "pico/cyw43_arch.h"
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
+#include "lwip/udp.h"
 #include "mdns_picow.h"
 #include "lwip/apps/httpd.h"
+#include "libwebsockets.h"
 
 
 #define TCP_PORT 4242
 #define BUF_SIZE 2048
 #define POLL_TIME_S 1
+
+#define UDP_PORT 12345 
 
 #define UART_A_ID uart1
 #define UART_A_BAUD_RATE 115200
@@ -355,6 +359,8 @@ void run_tcp_server_post(TCP_SERVER_T *state) {
     free(state);
 }
 
+
+
 uint setup_uart() {
     uint uart_ret = uart_init(UART_A_ID, UART_A_BAUD_RATE);
     gpio_set_function(UART_A_TX_PIN, GPIO_FUNC_UART);
@@ -387,6 +393,7 @@ int main() {
     printf("Http server initialised\n");
 
     mdns_picow_init();
+    printf("mDNS initialised\n");
     
     TCP_SERVER_T *state = tcp_server_init();
     state->restart_tcp_server = false;
