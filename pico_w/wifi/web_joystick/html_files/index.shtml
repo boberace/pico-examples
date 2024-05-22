@@ -246,12 +246,12 @@
       }
       // todo - get range to update while sliding************************************************************************************
       // add event handlers to the inputs
-      document.querySelectorAll('input[type="range"]').forEach(e => e.addEventListener("change", handleRange));
+      document.querySelectorAll('input[type="range"]').forEach(e => e.addEventListener("input", handleRange));
       document.querySelectorAll('input[type="radio"]').forEach(e => e.addEventListener("change", handleRadio));
       document.querySelectorAll('input[type="checkbox"]').forEach(e => e.addEventListener("change", handleCheckbox));
-      document.querySelectorAll('input[type="button"]').forEach(e => e.addEventListener("click", handleButton));
- 
+      document.querySelectorAll('input[type="button"]').forEach(e => e.addEventListener("click", handleButton)); 
   }
+
   function getValue(elementNumber, elementTypeAbbr) {
     return new Promise(function(resolve, reject) {
       const xhr = new XMLHttpRequest();
