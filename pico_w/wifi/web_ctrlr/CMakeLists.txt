@@ -42,7 +42,7 @@ target_include_directories(web_ctrlr_poll PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts
         )
 target_link_libraries(web_ctrlr_poll
-        pico_cyw43_arch_lwip_threadsafe_background
+        pico_cyw43_arch_lwip_poll
         pico_lwip_http
         pico_stdlib
         pico_lwip_mdns
