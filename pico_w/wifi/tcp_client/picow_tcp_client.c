@@ -24,6 +24,19 @@
 #define TEST_ITERATIONS 10
 #define POLL_TIME_S 5
 
+#define UART_A_ID uart1
+#define UART_A_BAUD_RATE 115200
+#define UART_A_TX_PIN 16
+#define UART_A_RX_PIN 17
+
+#define DEBUG_MAIN printf 
+
+#ifdef DEBUG_MAIN
+  #define DEBUG_printf(x, ...) DEBUG_MAIN(x , ##__VA_ARGS__)
+#else
+  #define DEBUG_printf(x, ...)
+#endif
+
 #if 0
 static void dump_bytes(const uint8_t *bptr, uint32_t len) {
     unsigned int i = 0;
@@ -233,10 +246,16 @@ void run_tcp_client_test(void) {
     }
     free(state);
 }
+uint setup_uart() {
+    uint uart_ret = uart_init(UART_A_ID, UART_A_BAUD_RATE);
+    gpio_set_function(UART_A_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART_A_RX_PIN, GPIO_FUNC_UART);
+    return uart_ret;
+}
 
 int main() {
     stdio_init_all();
-
+    setup_uart();
     if (cyw43_arch_init()) {
         DEBUG_printf("failed to initialise\n");
         return 1;

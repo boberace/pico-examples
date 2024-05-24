@@ -1,4 +1,4 @@
-if (NOT TEST_TCP_SERVER_IP)
+if (NOT ${TEST_TCP_SERVER_IP})
     message("Skipping tcp_client example as TEST_TCP_SERVER_IP is not defined")
 else()
     add_executable(picow_tcpip_client_background
@@ -17,7 +17,8 @@ else()
             pico_cyw43_arch_lwip_threadsafe_background
             pico_stdlib
             )
-
+        pico_enable_stdio_usb(picow_tcpip_client_background 0)
+        pico_enable_stdio_uart(picow_tcpip_client_background 1)
     pico_add_extra_outputs(picow_tcpip_client_background)
 
     add_executable(picow_tcpip_client_poll
@@ -36,5 +37,7 @@ else()
             pico_cyw43_arch_lwip_poll
             pico_stdlib
             )
+        pico_enable_stdio_usb(picow_tcpip_client_poll 0)
+        pico_enable_stdio_uart(picow_tcpip_client_poll 1)
     pico_add_extra_outputs(picow_tcpip_client_poll)
 endif()

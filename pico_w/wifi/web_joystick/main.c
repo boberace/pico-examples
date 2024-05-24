@@ -7,7 +7,6 @@
 #include "lwip/udp.h"
 #include "mdns_picow.h"
 #include "lwip/apps/httpd.h"
-#include "libwebsockets.h"
 
 
 #define TCP_PORT 4242
