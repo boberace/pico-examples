@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container {
+        display: flex;
+        width: 100%;
+        justify-content: space-between;
+        }
+        .square {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: calc(50vw - 10px);
+        height: calc(50vw - 10px);
+        border: 1px solid black;
+        }
+        .rectangle {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        width: 100%;
+        height: calc((50vw - 10px) / 4);
+        border: 1px solid black;
+        }
+        .vslider, .hslider {
+        -webkit-appearance: none;
+        width: 90%;
+        margin: 0 5%;
+        background-color: lightblue;
+        }
+        .rectangle div {
+        display: flex;
+        align-items: center;
+        }
+        .rectangle label {
+        margin-left: 5px;
+        }
+        .hslider {
+        height: 2em;
+        }
+        .vslider {
+        height: 2em;
+        transform: rotate(-90deg);
+        }
+    </style>
+    <title>PicoW Joystick</title> 
+</head>
+<body>
+    <div class="rectangle">
+        <label for="enable">Enable:</label>
+        <input type="checkbox" id="enable" name="enable" onchange="sendEnable(this.checked)"><br>
+    </div>
+    
+    <div class="container">
+        <div id="container1" class="square">
+          <input id="rangeValue1" type="range" min=0 max=100  step=1 value="50" 
+          onmouseup="this.value=50; sendValue(this.value, 'hs')" 
+          ontouchend="this.value=50; sendValue(this.value, 'hs')" 
+          oninput="sendValue(this.value, 'hs')" class="hslider">
+        </div>
+    
+        <div id="container2" class="square">
+          <input id="rangeValue2" type="range" min=0 max=100  step=1 value="50" 
+          onmouseup="this.value=50; sendValue(this.value, 'vs')" 
+          ontouchend="this.value=50; sendValue(this.value, 'vs')" 
+          oninput="sendValue(this.value, 'vs')" class="vslider">
+        </div>
+    </div>
+
+    <script>
+        function sendValue(val, slider) {
+            fetch('/', {
+                method: 'POST',
+                body: slider + '=' + val
+            });
+        }
+        function sendEnable(checked) {
+            fetch('/', {
+                method: 'POST',
+                body: 'en=' + checked
+            });
+        }
+        function heartbeat() {
+            fetch('/', {
+                method: 'POST',
+                body: 'hb'
+            });
+            setTimeout(heartbeat, 2000);
+        }
+        heartbeat();
+    </script>
+</body>
+</html>

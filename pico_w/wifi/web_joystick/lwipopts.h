@@ -6,6 +6,7 @@
 //
 // This example uses a common include to avoid repetition
 
+
 #define LWIP_MDNS_RESPONDER 1
 #define LWIP_IGMP 1 //  mdns.c
 #define LWIP_NUM_NETIF_CLIENT_DATA 1 // netif.c
@@ -13,10 +14,5 @@
 #define MEMP_NUM_SYS_TIMEOUT            (LWIP_NUM_SYS_TIMEOUT_INTERNAL+3) //https://github.com/raspberrypi/pico-sdk/issues/1281
 
 #include "lwipopts_examples_common.h"
-
-// This section enables HTTPD server with SSI, SGI
-// and tells server which converted HTML files to use
-#define LWIP_HTTPD 1
-#define HTTPD_FSDATA_FILE "htmldata.c"
 
 #endif
