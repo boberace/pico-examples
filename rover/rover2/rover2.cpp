@@ -2,10 +2,11 @@
 
 
 todo: 
-* update enable after reconnect or disable on disconnect
+* update enable after reconnect 
+* add connection live status to html
+* create vector control of motors
 
 */
-
 
 #include "pico/stdlib.h"
 #include "hardware/clocks.h"
@@ -25,66 +26,70 @@ todo:
 #define UART_A_TX_PIN 16
 #define UART_A_RX_PIN 17
 
-#define LED_PIN_C0 14
-#define LED_PIN_C1 15
+#define LED_PIN_C0 14 // used for core 0 to show running status
+#define LED_PIN_C1 15 // used for core 1 to show running status
 
-#define PIN_M1_AB 18 // 19 motor pin pairs
-#define PIN_HALL_AB 2 // 3 encoder pin pairs
+#define PIN_brushed_mot1_AB 18 // & 19 (motor pin pairs)
+#define PIN_HALL1_AB 2 // & 3 (encoder pin pairs)
+#define PIN_brushed_mot2_AB 20 // & 21 (motor pin pairs)
+#define PIN_HALL2_AB 4 // & 5 (encoder pin pairs)
 
 // adjust PWM_TOP to make sure (system clock) 125,000,000 / (MOT_PWM_FREQ * PWM_TOP ) < 256
 const float MOT_PWM_FREQ =  20000; // Hz
 const uint16_t PWM_TOP = 500000/MOT_PWM_FREQ; // 2^14 - 1
 
-
 #define ML_REF_MS 50 // motor loop refresh rate in milliseconds 
 // Encoder PIO and State Machines
-PIO pio_QE = pio0;
-uint sm_QE_MA = 0;
-volatile int new_value_e1 =0; // encoder value
+PIO pio_quad_enc = pio0;
+uint sm_quad_enc1 = 0;
+uint sm_quad_enc2 = 1;
+volatile int new_value_quad_enc1 =0; // encoder value
+volatile int new_value_quad_enc2 =0; // encoder value
 volatile bool ml_timer_flagged = false; // flag for motor loop 
-int delta_e1, old_value_e1=0; // encoder values
-float max_pps = 780.0; // expected max pps for motor encoders
+int delta_quad_enc1, old_value_quad_enc1=0; // encoder values
+int delta_quad_enc2, old_value_quad_enc2=0; // encoder values
+float max_pps = 780.0; // expected max pps for motor encoders (no load full speed)
 
 // pid
 float kp = 0.5, ki = 0.15, kd = 0.01;
-pid pid1(kp,ki,kd);
-float sp_e1 = 0; // set point in fraction of max
+pid pid_brushed_mot1(kp,ki,kd);
+pid pid_brushed_mot2(kp,ki,kd);
 float dt = ML_REF_MS / 1000.0; // refresh rate in seconds
-float cr_m1 = 0; // calculated motor rate
-float cr_e1; // calculated encoder rate 
+float cr_brushed_mot1 = 0; // calculated motor rate
+float cr_quad_enc1; // calculated encoder rate 
+float cr_brushed_mot2 = 0; // calculated motor rate
+float cr_quad_enc2; // calculated encoder rate 
 bool pid_on = true;
 
-bmc m1(PIN_M1_AB); //  motor instances
+bmc mot1_ctrl(PIN_brushed_mot1_AB); //  motor instance
+bmc mot2_ctrl(PIN_brushed_mot2_AB); //  motor instances
 
 void setup_pins();
 uint setup_uart();
 void print_ip_address();
 int setup_wifi();
-void setup_motor();
+void setup_brushed_motor();
 static inline void quadrature_encoder_program_init(PIO pio, uint sm, uint pin, int max_step_rate);
 static inline int32_t quadrature_encoder_get_count(PIO pio, uint sm);
 static bool quadrature_timer_callback(struct repeating_timer *t);
-float set_point(uint16_t pw);
 
-void core1_main() {
+void core1_main() { // CORE1 handle motor control and encoder feedback
     printf("Core 1 started\n");
     int counter_core1 = 0;
     uint64_t pt = to_ms_since_boot(get_absolute_time());
     uint led_state_core1 = 1;
 
-    pio_add_program(pio_QE, &quadrature_encoder_program);
-    quadrature_encoder_program_init(pio_QE, sm_QE_MA, PIN_HALL_AB, 0);
+    pio_add_program(pio_quad_enc, &quadrature_encoder_program);
+    quadrature_encoder_program_init(pio_quad_enc, sm_quad_enc1, PIN_HALL1_AB, 0);
+    quadrature_encoder_program_init(pio_quad_enc, sm_quad_enc2, PIN_HALL2_AB, 0);
 
     // setup timer to get peridic updates for encoder values
     struct repeating_timer qe_timer;
     add_repeating_timer_ms(-ML_REF_MS, quadrature_timer_callback, NULL, &qe_timer);
 
     // initialize pids to zero
-    pid1.set_setpoint(0.0);
-
-    int num_samples = 10;
-    float samples[num_samples] = {0};
-    int sample_index = 0;
+    pid_brushed_mot1.set_setpoint(+0.5);
+    pid_brushed_mot2.set_setpoint(-0.5);
 
     while (true) {
 
@@ -104,30 +109,23 @@ void core1_main() {
          if (ml_timer_flagged){
             ml_timer_flagged = false;
 
-            delta_e1 = (new_value_e1 - old_value_e1); // new_value_e1 continuously updated in quadrature_timer_callback
-            old_value_e1 = new_value_e1;
-            cr_e1 = (delta_e1 * (1000.0 / ML_REF_MS))/max_pps; // encoder calculated rate
+            delta_quad_enc1 = (new_value_quad_enc1 - old_value_quad_enc1); // new_value_quad_enc1 continuously updated in quadrature_timer_callback
+            old_value_quad_enc1 = new_value_quad_enc1;
+            cr_quad_enc1 = (delta_quad_enc1 * (1000.0 / ML_REF_MS))/max_pps; // encoder calculated rate
+
+            delta_quad_enc2 = (new_value_quad_enc2 - old_value_quad_enc2); // new_value_quad_enc1 continuously updated in quadrature_timer_callback
+            old_value_quad_enc2 = new_value_quad_enc2;
+            cr_quad_enc2 = (delta_quad_enc2 * (1000.0 / ML_REF_MS))/max_pps; // encoder calculated rate
 
            
             if(pid_on){ //pid-loop              
 
-                cr_m1 = pid1.output_update(cr_e1, dt);  // motor calculated rate  
-                m1.run(cr_m1);  
+                cr_brushed_mot1 = pid_brushed_mot1.output_update(cr_quad_enc1, dt);  // motor calculated rate  
+                cr_brushed_mot2 = pid_brushed_mot2.output_update(cr_quad_enc2, dt);  // motor calculated rate 
+                mot1_ctrl.run(cr_brushed_mot1);  
+                mot2_ctrl.run(cr_brushed_mot2); 
 
             }
-
-            samples[sample_index] = cr_e1; // store motor rate for averaging
-
-            sample_index++;
-            sample_index%=num_samples;             
-                
-            // float max_pps_test = delta_e1 * (1000.0 / ML_REF_MS);
-            float avg = 0;
-            for(int i = 0; i < num_samples; i++){
-                avg += samples[i];
-            }
-                avg /= num_samples;
-            // printf("\033[A\33[2K\r motor %f, encoder %f, average encoder %f \r\n", cr_m1, cr_e1, avg);
 
          }
 
@@ -135,7 +133,7 @@ void core1_main() {
     }
 }
 
-int main() {
+int main() { // CORE0 handle web server and user input
     stdio_init_all();
     setup_pins();
     setup_uart();
@@ -182,19 +180,19 @@ void setup_pins(){
     gpio_set_dir(LED_PIN_C1, GPIO_OUT);
     gpio_put(LED_PIN_C1, 1);
 
-    gpio_init(PIN_M1_AB);
-    gpio_set_dir(PIN_M1_AB, GPIO_OUT);
-    gpio_put(PIN_M1_AB, 0);
+    gpio_init(PIN_brushed_mot1_AB);
+    gpio_set_dir(PIN_brushed_mot1_AB, GPIO_OUT);
+    gpio_put(PIN_brushed_mot1_AB, 0);
 
-    gpio_init(PIN_M1_AB + 1);
-    gpio_set_dir(PIN_M1_AB + 1, GPIO_OUT);
-    gpio_put(PIN_M1_AB + 1, 0);
+    gpio_init(PIN_brushed_mot1_AB + 1);
+    gpio_set_dir(PIN_brushed_mot1_AB + 1, GPIO_OUT);
+    gpio_put(PIN_brushed_mot1_AB + 1, 0);
 
-    gpio_init(PIN_HALL_AB);
-    gpio_set_dir(PIN_HALL_AB, GPIO_IN);
+    gpio_init(PIN_HALL1_AB);
+    gpio_set_dir(PIN_HALL1_AB, GPIO_IN);
 
-    gpio_init(PIN_HALL_AB + 1);
-    gpio_set_dir(PIN_HALL_AB + 1, GPIO_IN);
+    gpio_init(PIN_HALL1_AB + 1);
+    gpio_set_dir(PIN_HALL1_AB + 1, GPIO_IN);
     
 }
 
@@ -283,7 +281,8 @@ static inline int32_t quadrature_encoder_get_count(PIO pio, uint sm)
 
 static bool quadrature_timer_callback(struct repeating_timer *t) {
 
-    new_value_e1 = quadrature_encoder_get_count(pio_QE, sm_QE_MA);
+    new_value_quad_enc1 = quadrature_encoder_get_count(pio_quad_enc, sm_quad_enc1);
+    new_value_quad_enc2 = quadrature_encoder_get_count(pio_quad_enc, sm_quad_enc2);
     ml_timer_flagged = true;
 
     return true;
