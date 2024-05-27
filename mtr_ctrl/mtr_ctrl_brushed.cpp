@@ -10,10 +10,12 @@
 #include "pid.h"
 #include "bmc.h"
 
-#define PIN_M1_AB 18 // 19 motor pin pairs
-#define PIN_HALL_AB 2 // 3 encoder pin pairs
+#define PIN_M1_AB 11 // 11/12 18/19 motor pin pairs
+#define PIN_HALL_AB 8 // 6/7 2/3 encoder pin pairs
 
-#define PIN_LED 15
+#define PIN_M1_ENA 10
+
+#define PIN_LED 25
 
 
 // Encoder PIO and State Machines
@@ -67,19 +69,20 @@ int main() {
     struct repeating_timer qe_timer;
     add_repeating_timer_ms(-ML_REF_MS, quadrature_timer_callback, NULL, &qe_timer);
 
-    // initialize pids to zero
-    pid1.set_setpoint(-0.5);
+    gpio_put(PIN_M1_ENA, 1);
+    pid1.set_setpoint(0.0);
 
-    // pid_on = false;
+    pid_on = false;
     // gpio_put(PIN_M1_AB, 1); // comment out- for test
 
     int num_samples = 10;
     float samples[num_samples] = {0};
     int sample_index = 0;
-
+    
     while (1)
     {
          gpio_put(PIN_LED, 0);
+         
 
          if (ml_timer_flagged){
             ml_timer_flagged = false;
@@ -88,7 +91,7 @@ int main() {
 
             delta_e1 = (new_value_e1 - old_value_e1); // new_value_e1 continuously updated in quadrature_timer_callback
             old_value_e1 = new_value_e1;
-            cr_e1 = (delta_e1 * (1000.0 / ML_REF_MS))/max_pps; // encoder calculated rate
+            cr_e1 = (delta_e1 * (1000.0 / ML_REF_MS)); // encoder calculated rate
 
            
             if(pid_on){ //pid-loop              
@@ -133,6 +136,9 @@ void setup_motor() {
     gpio_init(PIN_M1_AB + 1);
     gpio_set_dir(PIN_M1_AB + 1, GPIO_OUT);
     gpio_put(PIN_M1_AB + 1, 0);
+
+    gpio_init(PIN_M1_ENA);
+    gpio_set_dir(PIN_M1_ENA, GPIO_OUT); 
 
     gpio_init(PIN_HALL_AB);
     gpio_set_dir(PIN_HALL_AB, GPIO_IN);
