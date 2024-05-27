@@ -22,9 +22,36 @@
 #define DSIG_PIN 27 // digital signal pin
 #define POW_PIN 28  // power pin for signal amp
 
+#define midi_to_note(midi) (midi + 3) % 12
+#define midi_to_octave(midi) int(midi/12-1)
+
+uint instrument_index = 0;
 
 float con_pitch = 440.0;
-uint midi_index = 45;
+
+const uint num_instruments = 2;
+
+const uint num_guitar_tones = 6;
+uint guitar_midi[num_guitar_tones]={64, 59, 55, 50, 45, 40};
+const uint num_ukulele_tones = 4;
+uint ukulele_midi[num_ukulele_tones]={69, 64, 60, 67};
+
+
+typedef struct {
+    uint8_t midi;
+    uint8_t note;
+    uint8_t octave;
+    float freq;
+} tone_t;
+
+typedef struct {
+    uint8_t num_tones;
+    uint8_t tone_index = 0;
+    tone_t tones[num_guitar_tones];
+} instrument_t;
+
+instrument_t instruments[2];
+
 
 PIO CPLEX_PIO = pio0;   // charlieplex program pio
 #define CPLEX_SM  0     // charlieplex program state machine
@@ -53,25 +80,20 @@ uint32_t led_hi_masks[NUM_LEDS_CPLEX];    // for setting gpio value - one bit hi
 uint32_t led_pio_masks[NUM_LEDS_CPLEX*2]; // for auto pulling into pio isr - alternate gpio direction and gpio value
 
 uint64_t bNOTES[12] ={
-0b000000001100001001000111100010010001001000,
-0b000010001100001001000111100010010001001000,
-0b000000011100001001000101000010010001110000,
-0b000000001100001001000100000010010000110000,
-0b000010001100001001000100000010010000110000,
-0b000000011100001001000100100010010001110000,
-0b000010011100001001000100100010010001110000,
-0b000000011110001000000111000010000001111000,
-0b000000011110001000000111000010000001000000,
-0b000001011110001000000111000010000001000000,
-0b000000001100001000000101100010010000110000,
-0b000010001100001000000101100010010000110000
+0b000000001100001001000111100010010001001000, //A
+0b000010001100001001000111100010010001001000, //A#
+0b000000011100001001000101000010010001110000, //B
+0b000000001100001001000100000010010000110000, //C
+0b000010001100001001000100000010010000110000, //C#
+0b000000011100001001000100100010010001110000, //D
+0b000010011100001001000100100010010001110000, //D#
+0b000000011110001000000111000010000001111000, //E
+0b000000011110001000000111000010000001000000, //F
+0b000010011110001000000111000010000001000000, //F#
+0b000000001100001000000101100010010000110000, //G
+0b000010001100001000000101100010010000110000  //G#
 };
 
-uint note_counter = 0;
-
-
-uint64_t bSHARP = 0b000000000000000010000000000000;
-uint64_t bFLAT = 0b000000000000000100000000000000;
 uint64_t bDISPLAY = 0x3FFFFFFFFFF;  // first 42 bits are led status - set all high for led check
 uint32_t led_freq = FPS*NUM_LEDS_CPLEX;
 uint32_t led_micros = 1000000/(FPS*NUM_LEDS_CPLEX);
@@ -85,8 +107,8 @@ void gpio_callback(uint gpio, uint32_t events) {
     // "EDGE_FALL",  // 0x4
     // "EDGE_RISE"   // 0x8
     if(events == 0x8){
-        note_counter++;
-        note_counter%=12;
+        // tone_index++;
+        // note_counter%=12;
         gpio_put(LED_PIN, 1);
     } else if(events == 0x4){
         gpio_put(LED_PIN, 0);
@@ -94,11 +116,37 @@ void gpio_callback(uint gpio, uint32_t events) {
 }
 
 void charlieplex_program_init(PIO pio, uint sm, uint offset, float freq, uint base_pin, uint num_pins);
-void strobe_leds_forever(PIO pio, uint sm, uint offset, uint sense_pin, uint base_led_pin, uint num_leds, float freq);
+void strobe_program_init(PIO pio, uint sm, uint offset, float target_freq, uint sense_pin, uint base_led_pin, uint num_leds );
+float calc_strobe_div(float freq, uint num_leds);
+void change_strobe_frequency(PIO pio, uint sm, float new_target_freq, uint num_leds);
 
 int main() {
 
     stdio_init_all();
+    sleep_ms(1000);    
+    for(uint j = 0; j < num_guitar_tones; j++){
+        uint m = guitar_midi[j];
+        uint n = midi_to_note(guitar_midi[j]);
+        uint o = midi_to_octave(guitar_midi[j]);
+        float f = con_pitch*(pow(2,((m*100.0 -6900.)/1200.)));
+        instruments[0].tones[j].midi = m;
+        instruments[0].tones[j].note = n;
+        instruments[0].tones[j].octave = o;
+        instruments[0].tones[j].freq = f;
+        printf("guitar midi %d, note %d, octave %d, freq %.2f\n", m,n,o,f);
+    }
+
+    for(uint j = 0; j < num_ukulele_tones; j++){
+        uint m = ukulele_midi[j];
+        uint n = midi_to_note(ukulele_midi[j]);
+        uint o = midi_to_octave(ukulele_midi[j]);
+        float f = con_pitch*(pow(2,((m*100.0 -6900.)/1200.)));
+        instruments[1].tones[j].midi = m;
+        instruments[1].tones[j].note = n;
+        instruments[1].tones[j].octave = o;
+        instruments[1].tones[j].freq = f;
+        printf("ukulele midi %d, note %d, octave %d, freq %.2f\n", m,n,o,f);
+    }
 
     for (uint i = 0; i < NUM_PINS_CPLEX; ++i){
         pins_mask |= (1 <<  pins[i]);
@@ -126,11 +174,9 @@ int main() {
     uint offset_cplex = pio_add_program(CPLEX_PIO, &charlieplex_program);
     charlieplex_program_init(CPLEX_PIO, CPLEX_SM, offset_cplex, led_freq, pins[0], NUM_PINS_CPLEX);
 
-    // delete following
-    float tf = con_pitch*(pow(2,((midi_index*100. + 0 -6900.)/1200.)));
-    // end delete
+
     uint strobe_offset = pio_add_program(PIO_STROBE, &strobe_program);
-    strobe_leds_forever(PIO_STROBE, STROBE_SM, strobe_offset, DSIG_PIN, LED_STROBE_BPIN, NUM_LEDS_STROBE,  tf);
+    strobe_program_init(PIO_STROBE, STROBE_SM, strobe_offset, 110.0, ASIG_PIN, LED_STROBE_BPIN, NUM_LEDS_STROBE);
 
     for (uint i = 0; i < NUM_PINS_CPLEX; ++i){
         uint pin = pins[i];
@@ -179,10 +225,15 @@ int main() {
 
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
+    
+    gpio_init(ASIG_PIN);
+    gpio_set_dir(ASIG_PIN, GPIO_IN);
 
     gpio_init(POW_PIN);
     gpio_set_dir(POW_PIN, GPIO_OUT);
     gpio_put(POW_PIN, 1);
+
+    
 
     uint led_counter = 0;
     uint previous_millis = 0;
@@ -198,7 +249,7 @@ int main() {
                 led_pio_masks[2*i + 1] = (led_hi_masks[i] )* ((bDISPLAY & ( 1llu << i)) > 0);
             }
             bDISPLAY = 1 << led_counter;
-            bDISPLAY = bNOTES[note_counter] ;
+            bDISPLAY = bNOTES[instruments[instrument_index].tone_index] ;
 
             // note_counter++;
             // note_counter%=12;
@@ -253,19 +304,20 @@ void strobe_program_init(PIO pio, uint sm, uint offset, float target_freq, uint 
 	
     sm_config_set_in_shift(&c, false, false, 32); // shift to left, autopull disabled
 
-   float div = (float)clock_get_hz(clk_sys) / (num_leds*15*target_freq); // 16 leds * x cycles per sample in
+   float div = calc_strobe_div(target_freq, num_leds);
    sm_config_set_clkdiv(&c, div);
 
    pio_sm_init(pio, sm, offset, &c);
+   pio_sm_set_enabled(pio, sm, true);
 }
 
-void strobe_leds_forever(PIO pio, uint sm, uint offset, uint sense_pin, uint base_led_pin, uint num_leds, float freq) {
-    strobe_program_init(pio, sm, offset, freq, sense_pin, base_led_pin, num_leds);
-    pio_sm_set_enabled(pio, sm, true);
+float calc_strobe_div(float freq, uint num_leds){
+    return (float)clock_get_hz(clk_sys) / (num_leds*15*freq); // num_leds * 15 cycles per sample in
+}   
 
-    printf("Srobing pins at %.2f Hz\n", freq);
-
-        // set the frequency NUM_LEDS_STROBE times the target frequency 
-        // takeout 5 cycles for processing between samples
-    pio->txf[sm] = (clock_get_hz(clk_sys) / ( freq * num_leds)) - 5;
+void change_strobe_frequency(PIO pio, uint sm, float new_target_freq, uint num_leds){
+    float div = calc_strobe_div(new_target_freq, num_leds);
+    pio_sm_set_clkdiv(pio, sm, div);
 }
+
+
