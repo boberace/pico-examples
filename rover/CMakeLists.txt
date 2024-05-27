@@ -1,0 +1,4 @@
+if (NOT PICO_NO_HARDWARE)
+    add_subdirectory(rover1)
+    add_subdirectory(rover2)
+endif ()
