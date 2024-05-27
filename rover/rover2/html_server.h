@@ -2,6 +2,9 @@
 #ifndef HTML_SERVER_H
 #define HTML_SERVER_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "lwip/tcp.h"
 
@@ -15,5 +18,9 @@ void html_server_init();
 static err_t http_server_serve(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err);
 static err_t http_server_accept(void *arg, struct tcp_pcb *pcb, err_t err);
 void reset_slider_if_timed_out();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // HTML_SERVER_H
