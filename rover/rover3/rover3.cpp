@@ -28,6 +28,14 @@ todo:
 #define LED_PIN_C0 18 // used for core 0 to show running status
 #define LED_PIN_C1 19 // used for core 1 to show running status
 
+#define MOTOR2_DIR_PIN 8
+#define MOTOR2_EN_PIN 9
+#define MOTOR2_PULSE_OUT_PIN 11
+#define MOTOR2_PULSE_IN_PIN 10
+#define MOTOR1_DIR_PIN 12
+#define MOTOR1_EN_PIN 13
+#define MOTOR1_PULSE_OUT_PIN 15
+#define MOTOR1_PULSE_IN_PIN 14
 
 // adjust PWM_TOP to make sure (system clock) 125,000,000 / (MOT_PWM_FREQ * PWM_TOP ) < 256
 const float MOT_PWM_FREQ =  20000; // Hz
@@ -168,6 +176,36 @@ void setup_pins(){
     gpio_init(LED_PIN_C1);
     gpio_set_dir(LED_PIN_C1, GPIO_OUT);
     gpio_put(LED_PIN_C1, 1);
+
+    gpio_init(MOTOR1_PULSE_IN_PIN);
+    gpio_set_dir(MOTOR1_PULSE_IN_PIN, GPIO_IN);   
+
+    gpio_init(MOTOR1_PULSE_OUT_PIN);
+    gpio_set_dir(MOTOR1_PULSE_OUT_PIN, GPIO_OUT);
+    gpio_put(MOTOR1_PULSE_OUT_PIN, 0);
+
+    gpio_init(MOTOR1_DIR_PIN);
+    gpio_set_dir(MOTOR1_DIR_PIN, GPIO_OUT);
+    gpio_put(MOTOR1_DIR_PIN, 0);
+
+    gpio_init(MOTOR1_EN_PIN);
+    gpio_set_dir(MOTOR1_EN_PIN, GPIO_OUT);
+    gpio_put(MOTOR1_EN_PIN, 0);
+
+    gpio_init(MOTOR2_PULSE_IN_PIN);
+    gpio_set_dir(MOTOR2_PULSE_IN_PIN, GPIO_IN);
+
+    gpio_init(MOTOR2_PULSE_OUT_PIN);
+    gpio_set_dir(MOTOR2_PULSE_OUT_PIN, GPIO_OUT);
+    gpio_put(MOTOR2_PULSE_OUT_PIN, 0);
+
+    gpio_init(MOTOR2_DIR_PIN);
+    gpio_set_dir(MOTOR2_DIR_PIN, GPIO_OUT);
+    gpio_put(MOTOR2_DIR_PIN, 0);
+
+    gpio_init(MOTOR2_EN_PIN);
+    gpio_set_dir(MOTOR2_EN_PIN, GPIO_OUT);  
+    gpio_put(MOTOR2_EN_PIN, 0);
     
 }
 
