@@ -1,5 +1,7 @@
 /*
 
+for two brushed motors with quadrature encoders
+
 
 todo: 
 * update enable after reconnect 
@@ -45,7 +47,7 @@ uint sm_quad_enc1 = 0;
 uint sm_quad_enc2 = 1;
 volatile int new_value_quad_enc1 =0; // encoder value
 volatile int new_value_quad_enc2 =0; // encoder value
-volatile bool ml_timer_flagged = false; // flag for motor loop 
+volatile bool mot_loop_timer_flagged = false; // flag for motor loop 
 int delta_quad_enc1, old_value_quad_enc1=0; // encoder values
 int delta_quad_enc2, old_value_quad_enc2=0; // encoder values
 float max_pps = 780.0; // expected max pps for motor encoders (no load full speed)
@@ -106,8 +108,8 @@ void core1_main() { // CORE1 handle motor control and encoder feedback
             }
         }
 
-         if (ml_timer_flagged){
-            ml_timer_flagged = false;
+         if (mot_loop_timer_flagged){
+            mot_loop_timer_flagged = false;
 
             delta_quad_enc1 = (new_value_quad_enc1 - old_value_quad_enc1); // new_value_quad_enc1 continuously updated in quadrature_timer_callback
             old_value_quad_enc1 = new_value_quad_enc1;
@@ -180,19 +182,19 @@ void setup_pins(){
     gpio_set_dir(LED_PIN_C1, GPIO_OUT);
     gpio_put(LED_PIN_C1, 1);
 
-    gpio_init(PIN_brushed_mot1_AB);
-    gpio_set_dir(PIN_brushed_mot1_AB, GPIO_OUT);
-    gpio_put(PIN_brushed_mot1_AB, 0);
+    // gpio_init(PIN_brushed_mot1_AB);
+    // gpio_set_dir(PIN_brushed_mot1_AB, GPIO_OUT);
+    // gpio_put(PIN_brushed_mot1_AB, 0);
 
-    gpio_init(PIN_brushed_mot1_AB + 1);
-    gpio_set_dir(PIN_brushed_mot1_AB + 1, GPIO_OUT);
-    gpio_put(PIN_brushed_mot1_AB + 1, 0);
+    // gpio_init(PIN_brushed_mot1_AB + 1);
+    // gpio_set_dir(PIN_brushed_mot1_AB + 1, GPIO_OUT);
+    // gpio_put(PIN_brushed_mot1_AB + 1, 0);
 
-    gpio_init(PIN_HALL1_AB);
-    gpio_set_dir(PIN_HALL1_AB, GPIO_IN);
+    // gpio_init(PIN_HALL1_AB);
+    // gpio_set_dir(PIN_HALL1_AB, GPIO_IN);
 
-    gpio_init(PIN_HALL1_AB + 1);
-    gpio_set_dir(PIN_HALL1_AB + 1, GPIO_IN);
+    // gpio_init(PIN_HALL1_AB + 1);
+    // gpio_set_dir(PIN_HALL1_AB + 1, GPIO_IN);
     
 }
 
@@ -283,7 +285,7 @@ static bool quadrature_timer_callback(struct repeating_timer *t) {
 
     new_value_quad_enc1 = quadrature_encoder_get_count(pio_quad_enc, sm_quad_enc1);
     new_value_quad_enc2 = quadrature_encoder_get_count(pio_quad_enc, sm_quad_enc2);
-    ml_timer_flagged = true;
+    mot_loop_timer_flagged = true;
 
     return true;
 }
