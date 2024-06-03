@@ -6,6 +6,7 @@ todo:
 * update enable after reconnect 
 * add connection live status to html
 * create vector control of motors
+* add pid control of motors and put on scope to make sure 50% duty
 
 */
 
