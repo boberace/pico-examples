@@ -20,23 +20,44 @@ todo:
 #include "hardware/pio.h"
 #include "hardware/timer.h"
 #include "pid.h"
+#include "pin_monitor.pio.h"
 
 #define UART_A_ID uart1
 #define UART_A_BAUD_RATE 115200
-#define UART_A_TX_PIN 16
-#define UART_A_RX_PIN 17
 
-#define LED_PIN_C0 18 // used for core 0 to show running status
-#define LED_PIN_C1 19 // used for core 1 to show running status
+#define UART_A_TX_PIN 0
+#define UART_A_RX_PIN 1
+
+#define LED_SS1_PIN 2 // used for motor 1 to show hall feedback from motor driver
+#define LED_SS2_PIN 3 // used for motor 2 to show hall feedback from motor driver
+
+#define NOT_USED_PIN4 4
+#define NOT_USED_PIN5 5
+#define NOT_USED_PIN6 6
+#define NOT_USED_PIN7 7
 
 #define MOTOR2_DIR_PIN 8
 #define MOTOR2_EN_PIN 9
-#define MOTOR2_PULSE_OUT_PIN 11
 #define MOTOR2_PULSE_IN_PIN 10
+#define MOTOR2_PULSE_OUT_PIN 11
 #define MOTOR1_DIR_PIN 12
 #define MOTOR1_EN_PIN 13
-#define MOTOR1_PULSE_OUT_PIN 15
 #define MOTOR1_PULSE_IN_PIN 14
+#define MOTOR1_PULSE_OUT_PIN 15
+
+#define NOT_USED_PIN16 16
+#define NOT_USED_PIN17 17
+
+#define LED_C0_PIN 18 // used for core 0 to show running status
+#define LED_C1_PIN 19 // used for core 1 to show running status
+
+#define NOT_USED_PIN20 20
+#define NOT_USED_PIN21 21
+#define NOT_USED_PIN22 22
+#define NOT_USED_PIN26 26
+#define NOT_USED_PIN27 27
+#define NOT_USED_PIN28 28
+
 
 // adjust PWM_TOP to make sure (system clock) 125,000,000 / (MOT_PWM_FREQ * PWM_TOP ) < 256
 const float MOT_PWM_FREQ =  20000; // Hz
@@ -52,11 +73,7 @@ int delta_encoder1, old_value_encoder1=0; // encoder values
 int delta_encoder2, old_value_encoder2=0; // encoder values
 float max_pps = 780.0; // expected max pps for motor encoders (no load full speed)
 
-
 #define ML_REF_MS 50 // motor loop refresh rate in milliseconds 
-
-
-
 // pid
 float kp = 0.5, ki = 0.15, kd = 0.01;
 pid pid_mot1(kp,ki,kd);
@@ -73,6 +90,8 @@ void setup_pins();
 uint setup_uart();
 void print_ip_address();
 int setup_wifi();
+void pin_monitor_program_init(PIO pio, uint sm, uint mon_pin, uint fb_pin);
+static inline int32_t pin_monitor_get_count(PIO pio, uint sm);
 static bool pulse_feedback_callback(struct repeating_timer *t);
 
 void core1_main() { // CORE1 handle motor control and encoder feedback
@@ -81,14 +100,17 @@ void core1_main() { // CORE1 handle motor control and encoder feedback
     uint64_t pt = to_ms_since_boot(get_absolute_time());
     uint led_state_core1 = 1;
 
+    pio_add_program(pio_encoder, &pin_monitor_program);
+    pin_monitor_program_init(pio_encoder, sm_encoder1, MOTOR1_PULSE_IN_PIN, LED_SS1_PIN);
+    pin_monitor_program_init(pio_encoder, sm_encoder2, MOTOR2_PULSE_IN_PIN, LED_SS2_PIN);
 
     // setup timer to get peridic updates for encoder values
     struct repeating_timer qe_timer;
     add_repeating_timer_ms(-ML_REF_MS, pulse_feedback_callback, NULL, &qe_timer);
 
     // initialize pids to zero
-    pid_mot1.set_setpoint(+0.5);
-    pid_mot2.set_setpoint(-0.5);
+    pid_mot1.set_setpoint(0);
+    pid_mot2.set_setpoint(0);
 
     while (true) {
 
@@ -96,13 +118,14 @@ void core1_main() { // CORE1 handle motor control and encoder feedback
         if(ct - pt >= 500){  
             pt = ct;
             led_state_core1 = led_state_core1?0:1;
-            gpio_put(LED_PIN_C1, led_state_core1);
+            gpio_put(LED_C1_PIN, led_state_core1);
             
             if(led_state_core1)
             {
                 counter_core1++;           
 
             }
+            printf("\033[A\33[2K\rcounter_core1: %i, new_value_encoder1: %i, new_value_encoder2: %i, \n",counter_core1, new_value_encoder1, new_value_encoder2);
         }
 
          if (motor_loop_timer_flag){
@@ -151,9 +174,9 @@ int main() { // CORE0 handle web server and user input
         if(ct - pt >= 500){  
             pt = ct;
             led_state_core0 = led_state_core0?0:1;
-            gpio_put(LED_PIN_C0, led_state_core0);
+            gpio_put(LED_C0_PIN, led_state_core0);
 
-            printf("\033[A\33[2K\rdirection: %i, speed: %i, enable: %i\n", control_data.direction, control_data.speed, control_data.enable);
+            // printf("\033[A\33[2K\rdirection: %i, speed: %i, enable: %i\n", control_data.direction, control_data.speed, control_data.enable);
             
             if(led_state_core0)
             {
@@ -170,13 +193,13 @@ int main() { // CORE0 handle web server and user input
 
 void setup_pins(){
 
-    gpio_init(LED_PIN_C0);
-    gpio_set_dir(LED_PIN_C0, GPIO_OUT);
-    gpio_put(LED_PIN_C0, 1);
+    gpio_init(LED_C0_PIN);
+    gpio_set_dir(LED_C0_PIN, GPIO_OUT);
+    gpio_put(LED_C0_PIN, 1);
 
-    gpio_init(LED_PIN_C1);
-    gpio_set_dir(LED_PIN_C1, GPIO_OUT);
-    gpio_put(LED_PIN_C1, 1);
+    gpio_init(LED_C1_PIN);
+    gpio_set_dir(LED_C1_PIN, GPIO_OUT);
+    gpio_put(LED_C1_PIN, 1);
 
     gpio_init(MOTOR1_PULSE_IN_PIN);
     gpio_set_dir(MOTOR1_PULSE_IN_PIN, GPIO_IN);   
@@ -245,8 +268,47 @@ int setup_wifi(){
     return 1;
 }
 
+void pin_monitor_program_init(PIO pio, uint sm, uint mon_pin, uint fb_pin) {
+    // the code must be loaded at address 0, because it uses computed jumps
+    pio_sm_config c = pin_monitor_program_get_default_config(0);
+
+    pio_sm_set_consecutive_pindirs(pio, sm, fb_pin, 1, true);
+    pio_gpio_init(pio, fb_pin);
+    sm_config_set_sideset_pins(&c, fb_pin);
+
+    pio_gpio_init(pio, mon_pin);
+    sm_config_set_in_pins(&c, mon_pin);
+    // shift to left, autopull disabled
+    sm_config_set_in_shift(&c, false, false, 32);
+    // don't join FIFO's
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_NONE); 
+    // set up to create microsecond tics
+    float div = (float)clock_get_hz(clk_sys) / (1*1000*1000 / 8.0); //sys freq/ update freq / 8 clock cycles per update
+    sm_config_set_clkdiv(&c, div);
+
+    pio_sm_init(pio, sm, 0, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+static inline int32_t pin_monitor_get_count(PIO pio, uint sm)
+{
+    uint ret;
+    int n;
+
+    // if the FIFO has N entries, we fetch them to drain the FIFO,
+    // plus one entry which will be guaranteed to not be stale
+    n = pio_sm_get_rx_fifo_level(pio, sm) + 1;
+    while (n > 0) {
+        ret = pio_sm_get(pio, sm);
+        n--;
+    }
+    return ret;
+}
+
 static bool pulse_feedback_callback(struct repeating_timer *t){
     // get pulse count
+    new_value_encoder1 = pin_monitor_get_count(pio_encoder, sm_encoder1);
+    new_value_encoder2 = pin_monitor_get_count(pio_encoder, sm_encoder2);
     motor_loop_timer_flag = true;
     return true;
 }

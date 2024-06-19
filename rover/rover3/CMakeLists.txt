@@ -19,6 +19,8 @@ add_executable(rover3_background
         pid.cpp
         )
 
+pico_generate_pio_header(rover3_background ${CMAKE_CURRENT_LIST_DIR}/pin_monitor.pio)
+
 target_compile_definitions(rover3_background PRIVATE
         WIFI_SSID=\"${WIFI_SSID}\"
         WIFI_PASSWORD=\"${WIFI_PASSWORD}\"
