@@ -20,7 +20,7 @@ todo:
 #include "hardware/pio.h"
 #include "hardware/timer.h"
 #include "pid.h"
-#include "pin_monitor.pio.h"
+#include "pin_encoder.pio.h"
 
 #define UART_A_ID uart1
 #define UART_A_BAUD_RATE 115200
@@ -62,6 +62,7 @@ todo:
 // adjust PWM_TOP to make sure (system clock) 125,000,000 / (MOT_PWM_FREQ * PWM_TOP ) < 256
 const float MOT_PWM_FREQ =  20000; // Hz
 const uint16_t PWM_TOP = 500000/MOT_PWM_FREQ; // 2^14 - 1
+const int ML_REF_MS = 50; // motor loop refresh rate in milliseconds 
 
 PIO pio_encoder = pio0;
 uint sm_encoder1 = 0;
@@ -69,11 +70,11 @@ uint sm_encoder2 = 1;
 volatile int new_value_encoder1 =0; // encoder value
 volatile int new_value_encoder2 =0; // encoder value
 volatile bool motor_loop_timer_flag = false; // flag for motor loop 
-int delta_encoder1, old_value_encoder1=0; // encoder values
-int delta_encoder2, old_value_encoder2=0; // encoder values
+int delta_encoder1 = 0, old_value_encoder1=0; // encoder values
+int delta_encoder2 = 0, old_value_encoder2=0; // encoder values
 float max_pps = 780.0; // expected max pps for motor encoders (no load full speed)
 
-#define ML_REF_MS 50 // motor loop refresh rate in milliseconds 
+
 // pid
 float kp = 0.5, ki = 0.15, kd = 0.01;
 pid pid_mot1(kp,ki,kd);
@@ -90,8 +91,8 @@ void setup_pins();
 uint setup_uart();
 void print_ip_address();
 int setup_wifi();
-void pin_monitor_program_init(PIO pio, uint sm, uint mon_pin, uint fb_pin);
-static inline int32_t pin_monitor_get_count(PIO pio, uint sm);
+void pin_encoder_program_init(PIO pio, uint sm, uint mon_pin, uint fb_pin);
+static inline int32_t pin_encoder_get_count(PIO pio, uint sm);
 static bool pulse_feedback_callback(struct repeating_timer *t);
 
 void core1_main() { // CORE1 handle motor control and encoder feedback
@@ -100,13 +101,13 @@ void core1_main() { // CORE1 handle motor control and encoder feedback
     uint64_t pt = to_ms_since_boot(get_absolute_time());
     uint led_state_core1 = 1;
 
-    pio_add_program(pio_encoder, &pin_monitor_program);
-    pin_monitor_program_init(pio_encoder, sm_encoder1, MOTOR1_PULSE_IN_PIN, LED_SS1_PIN);
-    pin_monitor_program_init(pio_encoder, sm_encoder2, MOTOR2_PULSE_IN_PIN, LED_SS2_PIN);
+    pio_add_program(pio_encoder, &pin_encoder_program);
+    pin_encoder_program_init(pio_encoder, sm_encoder1, MOTOR1_PULSE_IN_PIN, LED_SS1_PIN);
+    pin_encoder_program_init(pio_encoder, sm_encoder2, MOTOR2_PULSE_IN_PIN, LED_SS2_PIN);
 
     // setup timer to get peridic updates for encoder values
-    struct repeating_timer qe_timer;
-    add_repeating_timer_ms(-ML_REF_MS, pulse_feedback_callback, NULL, &qe_timer);
+    struct repeating_timer pe_timer;
+    add_repeating_timer_ms(-ML_REF_MS, pulse_feedback_callback, NULL, &pe_timer);
 
     // initialize pids to zero
     pid_mot1.set_setpoint(0);
@@ -125,19 +126,21 @@ void core1_main() { // CORE1 handle motor control and encoder feedback
                 counter_core1++;           
 
             }
-            printf("\033[A\33[2K\rcounter_core1: %i, new_value_encoder1: %i, new_value_encoder2: %i, \n",counter_core1, new_value_encoder1, new_value_encoder2);
+
+            printf("\033[A\33[2K\r left: %f, right: %f \n", cr_encoder1, cr_encoder2);
+
         }
 
-         if (motor_loop_timer_flag){
+        if (motor_loop_timer_flag){ // set in callback
             motor_loop_timer_flag = false;
 
-            delta_encoder1 = (new_value_encoder1 - old_value_encoder1); // new_value_encoder1 continuously updated in quadrature_timer_callback
+            delta_encoder1 = (new_value_encoder1 - old_value_encoder1); // new_value_encoder1 continuously updated in callback
             old_value_encoder1 = new_value_encoder1;
-            cr_encoder1 = (delta_encoder1 * (1000.0 / ML_REF_MS))/max_pps; // encoder calculated rate
+            cr_encoder1 = (float)((float)delta_encoder1 / (1000.0 / (float)ML_REF_MS));///max_pps; // encoder calculated rate
 
-            delta_encoder2 = (new_value_encoder2 - old_value_encoder2); // new_value_encoder1 continuously updated in quadrature_timer_callback
+            delta_encoder2 = (new_value_encoder2 - old_value_encoder2); // new_value_encoder1 continuously updated in callback
             old_value_encoder2 = new_value_encoder2;
-            cr_encoder2 = (delta_encoder2 * (1000.0 / ML_REF_MS))/max_pps; // encoder calculated rate
+            cr_encoder2 = (float)((float)delta_encoder2 / (1000.0 / (float)ML_REF_MS));///max_pps; // encoder calculated rate
 
            
             if(pid_on){ //pid-loop              
@@ -149,7 +152,6 @@ void core1_main() { // CORE1 handle motor control and encoder feedback
             }
 
          }
-
 
     }
 }
@@ -268,9 +270,9 @@ int setup_wifi(){
     return 1;
 }
 
-void pin_monitor_program_init(PIO pio, uint sm, uint mon_pin, uint fb_pin) {
+void pin_encoder_program_init(PIO pio, uint sm, uint mon_pin, uint fb_pin) {
     // the code must be loaded at address 0, because it uses computed jumps
-    pio_sm_config c = pin_monitor_program_get_default_config(0);
+    pio_sm_config c = pin_encoder_program_get_default_config(0);
 
     pio_sm_set_consecutive_pindirs(pio, sm, fb_pin, 1, true);
     pio_gpio_init(pio, fb_pin);
@@ -282,15 +284,12 @@ void pin_monitor_program_init(PIO pio, uint sm, uint mon_pin, uint fb_pin) {
     sm_config_set_in_shift(&c, false, false, 32);
     // don't join FIFO's
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_NONE); 
-    // set up to create microsecond tics
-    float div = (float)clock_get_hz(clk_sys) / (1*1000*1000 / 8.0); //sys freq/ update freq / 8 clock cycles per update
-    sm_config_set_clkdiv(&c, div);
 
     pio_sm_init(pio, sm, 0, &c);
     pio_sm_set_enabled(pio, sm, true);
 }
 
-static inline int32_t pin_monitor_get_count(PIO pio, uint sm)
+static inline int32_t pin_encoder_get_count(PIO pio, uint sm)
 {
     uint ret;
     int n;
@@ -307,8 +306,8 @@ static inline int32_t pin_monitor_get_count(PIO pio, uint sm)
 
 static bool pulse_feedback_callback(struct repeating_timer *t){
     // get pulse count
-    new_value_encoder1 = pin_monitor_get_count(pio_encoder, sm_encoder1);
-    new_value_encoder2 = pin_monitor_get_count(pio_encoder, sm_encoder2);
+    new_value_encoder1 = pin_encoder_get_count(pio_encoder, sm_encoder1);
+    new_value_encoder2 = pin_encoder_get_count(pio_encoder, sm_encoder2);
     motor_loop_timer_flag = true;
     return true;
 }
