@@ -26,19 +26,19 @@
 #include "pico/binary_info.h"
 #include "hardware/i2c.h"
 
-#define I2C_SDA_PIN 0
-#define I2C_SCL_PIN  1
+#define I2C_SDA_PIN 20
+#define I2C_SCL_PIN  21
 #define I2C i2c0 // depends on pin selection for either zero or one
 #define I2C_BAUD_RATE 100 * 1000
 
-// #define PRINT_PROBE_UART // uncomment to print to uart
+#define PRINT_PROBE_UART // uncomment to print to uart
 
 #ifdef PRINT_PROBE_UART
 
-#define UART_A_ID uart1
+#define UART_A_ID uart0
 #define UART_A_BAUD_RATE 115200
-#define UART_A_TX_PIN 8
-#define UART_A_RX_PIN 9
+#define UART_A_TX_PIN 0
+#define UART_A_RX_PIN 1
 
 uint setup_uart() {
     uint uart_ret = uart_init(UART_A_ID, UART_A_BAUD_RATE);
@@ -69,10 +69,10 @@ int main() {
     stdio_init_all();
     sleep_ms(2000);
 
-    #define POW_PIN 21
-    gpio_init(POW_PIN);
-    gpio_set_dir(POW_PIN, GPIO_OUT);
-    gpio_put(POW_PIN, 1);
+    // #define POW_PIN 21
+    // gpio_init(POW_PIN);
+    // gpio_set_dir(POW_PIN, GPIO_OUT);
+    // gpio_put(POW_PIN, 1);
 
     i2c_init(I2C, I2C_BAUD_RATE);
     gpio_set_function(I2C_SDA_PIN, GPIO_FUNC_I2C);
