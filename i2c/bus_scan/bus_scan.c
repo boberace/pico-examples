@@ -26,9 +26,9 @@
 #include "pico/binary_info.h"
 #include "hardware/i2c.h"
 
-#define I2C_SDA_PIN 20
-#define I2C_SCL_PIN  21
-#define I2C i2c0 // depends on pin selection for either zero or one
+#define I2C_SDA_PIN 18
+#define I2C_SCL_PIN  19
+#define I2C i2c1 // depends on pin selection for either zero or one
 #define I2C_BAUD_RATE 100 * 1000
 
 #define PRINT_PROBE_UART // uncomment to print to uart

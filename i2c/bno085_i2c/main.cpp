@@ -15,25 +15,24 @@ TP: Sensor Hub Transport Protocol R 1.7
 
 // define i2c pararmeters and pins
 #define I2CA_BUADRATE 400*1000 //400k fastest
-#define PIN_I2CA_SDA 16 
-#define PIN_I2CA_SCL 17 
-#define I2CA_INSTANCE i2c0
+#define PIN_I2CA_SDA 18
+#define PIN_I2CA_SCL 19
+#define I2CA_INSTANCE i2c1
 
 // define interrupt and reset pins
-#define PIN_BNO085_INT 26 
-#define PIN_BNO085_RST 14 
+#define PIN_BNO085_INT 0xFF 
+#define PIN_BNO085_RST 0xFF 
 
 bno085_i2c bno085(PIN_BNO085_RST, PIN_BNO085_INT);
-
 
 #define PRINT_PROBE_UART // uncomment to print to uart
 
 #ifdef PRINT_PROBE_UART
 
-#define UART_A_ID uart1
+#define UART_A_ID uart0
 #define UART_A_BAUD_RATE 115200
-#define UART_A_TX_PIN 8
-#define UART_A_RX_PIN 9
+#define UART_A_TX_PIN 0
+#define UART_A_RX_PIN 1
 
 uint setup_uart() {
     uint uart_ret = uart_init(UART_A_ID, UART_A_BAUD_RATE);

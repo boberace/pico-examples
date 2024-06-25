@@ -14,7 +14,8 @@ target_link_libraries(bno085_i2c PRIVATE
         hardware_i2c
         )
 
-pico_enable_stdio_usb(bno085_i2c 0)
+# pico_enable_stdio_usb(bno085_i2c 0)
+# pico_enable_stdio_uart(bno085_i2c 1)
 
 pico_add_extra_outputs(bno085_i2c)
 

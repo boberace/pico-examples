@@ -27,13 +27,13 @@
 
 // define i2c pararmeters and pins
 #define I2CA_BUADRATE 400*1000
-#define PIN_I2CA_SDA 16 
-#define PIN_I2CA_SCL 17 
-#define I2CA_INSTANCE i2c0
+#define PIN_I2CA_SDA 18
+#define PIN_I2CA_SCL 19
+#define I2CA_INSTANCE i2c1
 
 // define interrupt and reset pins
-#define PIN_BNO085_INT 26 
-#define PIN_BNO085_RST 14 
+#define PIN_BNO085_INT 0xFF
+#define PIN_BNO085_RST 0xFF
 
 bno085_i2c bno085(PIN_BNO085_RST, PIN_BNO085_INT);
 sh2_SensorValue_t sensor_value;
@@ -63,7 +63,7 @@ char id_data_imu[] = "pico_bno085";
 #define PRINT(...)
 #endif
 
-#define BLINK_ERROR 1000000/BLINK_ERROR_FREQ
+#define BLINK_ERROR 100000/BLINK_ERROR_FREQ
 #define BLINK_NORMAL 1000000/BLINK_NORMAL_FREQ
 
 uint blink_interval = BLINK_NORMAL;
@@ -268,7 +268,7 @@ int main()
     rclc_timer_init_default(
         &timer,
         &support,
-        RCL_MS_TO_NS(1000),
+        RCL_MS_TO_NS(100),
         timer_callback);
 
     rclc_executor_init(&executor, &support.context, 1, &allocator);   

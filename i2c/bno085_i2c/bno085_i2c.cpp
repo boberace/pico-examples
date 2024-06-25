@@ -158,9 +158,11 @@ bool bno085_i2c::wasReset(void) {
 static int hal_wait_for_int(void) {
   DEBUG_PRINT("```hal_wait_for_int called\r\n");
   for (int i = 0; i < 500; i++) {
-    if (!gpio_get(_PIN_BNO085_INT)){
-        DEBUG_PRINT("~~~hal_wait_for_int INT triggered\r\n");
-        return true;
+    if(_PIN_BNO085_INT != 0xFF){ 
+        if (!gpio_get(_PIN_BNO085_INT)){
+            DEBUG_PRINT("~~~hal_wait_for_int INT triggered\r\n");
+            return true;
+        }
     }
     DEBUG_PRINT(".");
     sleep_ms(1);
