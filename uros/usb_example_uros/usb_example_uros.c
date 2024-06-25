@@ -18,11 +18,8 @@ std_msgs__msg__Int32 msg;
 void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
     rcl_ret_t ret = rcl_publish(&publisher, &msg, NULL);
-    if (ret == RCL_RET_OK){
-        msg.data++;
-    }
+    msg.data++;
 }
-
 
 int main()
 {
@@ -55,10 +52,7 @@ int main()
     if (ret != RCL_RET_OK)
     {
         // Unreachable agent, exiting program.
-        printf("\nAgent not found!\n");
         return ret;
-    } else {
-        printf("\nAgent found!\n");
     }
 
     rclc_support_init(&support, 0, NULL, &allocator);
@@ -94,4 +88,6 @@ int main()
         }
     }
     return 0;
+
+
 }

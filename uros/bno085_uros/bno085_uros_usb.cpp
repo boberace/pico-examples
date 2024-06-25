@@ -17,7 +17,7 @@
 
 #include "pico/cyw43_arch.h"
 
-#define USING_PICO_W // uncomment if using pico-w so that we can blink the LED
+// #define USING_PICO_W // uncomment if using pico-w so that we can blink the LED
 
 #ifdef USING_PICO_W
 #define led_toggle() cyw43_arch_gpio_put( CYW43_WL_GPIO_LED_PIN, !cyw43_arch_gpio_get(CYW43_WL_GPIO_LED_PIN));
@@ -39,10 +39,10 @@ bno085_i2c bno085(PIN_BNO085_RST, PIN_BNO085_INT);
 sh2_SensorValue_t sensor_value;
 char id_data_imu[] = "pico_bno085";
 
-#define UART_A_ID uart1
+#define UART_A_ID uart0
 #define UART_A_BAUD_RATE 115200
-#define UART_A_TX_PIN 8
-#define UART_A_RX_PIN 9
+#define UART_A_TX_PIN 0
+#define UART_A_RX_PIN 1
 
 #define IMU_FREQ 10
 
@@ -105,7 +105,9 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
         publish_event_counter++;                           
     }
     timer_calback_counter++;
-    PRINT("\033[A\33[2K\rtcb: %i, pub: %i, imu %i\n", timer_calback_counter, publish_event_counter, imu_event_counter);
+    // PRINT("\033[A\33[2K\rtcb: %i, pub: %i, imu %i\n", timer_calback_counter, publish_event_counter, imu_event_counter);
+    PRINT("tcb: %i, pub: %i, imu %i\r\n", timer_calback_counter, publish_event_counter, imu_event_counter);
+
 }
 
 
@@ -202,7 +204,7 @@ int main()
     sleep_ms(2000);
 #ifdef USING_PICO_W
     if (cyw43_arch_init()) {
-        printf("Wi-Fi init failed");
+        PRINT("Wi-Fi init failed\r\n");
         return -1;
     }
 #else    
@@ -248,10 +250,10 @@ int main()
     if (ret != RCL_RET_OK)
     {
         // Unreachable agent, exiting program.
-        PRINT("\nAgent not found!\n");
+        PRINT("\nAgent not found!\r\n");
         return ret;
     } else {
-        PRINT("\nAgent found!\n");
+        PRINT("\nAgent found!\r\n");
     }
 
     rclc_support_init(&support, 0, NULL, &allocator);
@@ -266,7 +268,7 @@ int main()
     rclc_timer_init_default(
         &timer,
         &support,
-        RCL_MS_TO_NS(100),
+        RCL_MS_TO_NS(1000),
         timer_callback);
 
     rclc_executor_init(&executor, &support.context, 1, &allocator);   

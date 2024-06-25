@@ -6,7 +6,7 @@
 
 #include "pico/stdlib.h"
 #include <stdio.h>
-#define LED_16_ARRAY
+//#define LED_16_ARRAY
 
 int main() {
     stdio_init_all();
@@ -44,7 +44,8 @@ int main() {
             }
             for(auto i = 0; i < 16 ; ++i){
                 gpio_put(i, 0);
-                sleep_ms(100);
+                sleep_ms(800);
+	        printf("blink %i\n",time_us_32());
             }
 
         }

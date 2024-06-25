@@ -38,7 +38,13 @@ int main() {
     uart_putc(UART_ID, 'B');
 
     // Send out a string, with CR/LF conversions
-    uart_puts(UART_ID, " Hello, UART!\n");
+    uart_puts(UART_ID, " Hello, UART!\r\n");
+
+    uint counter = 0;
+    while(1){
+        sleep_ms(1000);
+        uart_puts(UART_ID, " Hello, UART!\r\n");
+    }
 }
 
 /// \end::hello_uart[]
