@@ -37,8 +37,8 @@ ideas:
 #define UART_A_TX_PIN 0
 #define UART_A_RX_PIN 1
 
-#define LED_C0_PIN 2 // used for core 0 to show running status
-#define LED_C1_PIN 3 // used for core 1 to show running status
+#define LED_C0_PIN 22 // used for core 0 to show running status
+#define LED_C1_PIN 26 // used for core 1 to show running status
 
 #define GPS_RX_PIN 4
 #define GPS_TX_PIN 5
@@ -46,14 +46,14 @@ ideas:
 #define LED_SS1_PIN 6 // used for motor 1 to show hall feedback from motor driver
 #define LED_SS2_PIN 7 // used for motor 2 to show hall feedback from motor driver
 
-#define MOTOR2_DIR_PIN 8
-#define MOTOR2_EN_PIN 9
-#define MOTOR2_PULSE_IN_PIN 10
-#define MOTOR2_PWM_OUT_PIN 11
-#define MOTOR1_DIR_PIN 12
-#define MOTOR1_EN_PIN 13
-#define MOTOR1_PULSE_IN_PIN 14
-#define MOTOR1_PWM_OUT_PIN 15
+#define MOTOR2_DIR_PIN 10
+#define MOTOR2_BRK_PIN 11
+#define MOTOR2_PULSE_IN_PIN 8
+#define MOTOR2_PWM_OUT_PIN 9
+#define MOTOR1_DIR_PIN 14
+#define MOTOR1_BRK_PIN 15
+#define MOTOR1_PULSE_IN_PIN 12
+#define MOTOR1_PWM_OUT_PIN 13
 
 #define SD_SER_OUT_PIN 16
 #define SD_CS_PIN 17
@@ -63,8 +63,8 @@ ideas:
 #define IMU_SDA_PIN 20
 #define IMU_SCL_PIN 21
 
-#define BUMP_FL_PIN 22
-#define BUMP_FR_PIN 26
+#define BUMP_FL_PIN 2
+#define BUMP_FR_PIN 3
 #define BUMP_RL_PIN 27
 #define BUMP_RR_PIN 28
 
@@ -80,6 +80,7 @@ volatile int new_value_encoder2 =0; // encoder value
 volatile bool motor_loop_timer_flag = false; // flag for motor loop 
 int delta_encoder1 = 0, old_value_encoder1=0; // encoder values
 int delta_encoder2 = 0, old_value_encoder2=0; // encoder values
+int val_motor1 , val_motor2; // motor pwm value
 float max_pps = 1200.0; // expected max pps for motor encoders (no load full speed)
 float ppr = 45.0; // pulses per revolution for motor encoders
 float max_rps = max_pps / ppr; // expected max rps for motor encoders (no load full speed)
@@ -94,7 +95,6 @@ float cr_motor1 = 0; // calculated motor rate
 float cr_encoder1; // calculated encoder rate 
 float cr_motor2 = 0; // calculated motor rate
 float cr_encoder2; // calculated encoder rate 
-bool pid_on = false;
 
 // function delcarations
 void setup_pins();
@@ -106,12 +106,14 @@ static inline int32_t pin_encoder_get_count(PIO pio, uint sm);
 static bool pulse_feedback_callback(struct repeating_timer *t);
 static void setup_pwm_motors();
 
-void core1_main() { // CORE1 handle motor control and encoder feedback
+void core1_main() { // CORE1 
 
     printf("Core 1 started\n");
     int counter_core1 = 0;
     uint64_t pt = to_ms_since_boot(get_absolute_time());
     uint led_state_core1 = 1;
+
+    setup_pwm_motors();
 
     pio_add_program(pio_encoder, &pin_encoder_program);
     pin_encoder_program_init(pio_encoder, sm_encoder1, MOTOR1_PULSE_IN_PIN, LED_SS1_PIN);
@@ -125,6 +127,8 @@ void core1_main() { // CORE1 handle motor control and encoder feedback
     pid_mot1.set_setpoint(0);
     pid_mot2.set_setpoint(0);
 
+    pwm_set_gpio_level(MOTOR1_PWM_OUT_PIN, 10);
+    pwm_set_gpio_level(MOTOR2_PWM_OUT_PIN, 10);
 
     while (true) {
 
@@ -138,9 +142,7 @@ void core1_main() { // CORE1 handle motor control and encoder feedback
             {
                 counter_core1++;           
 
-            }
-
-            
+            }            
 
         }
 
@@ -149,30 +151,31 @@ void core1_main() { // CORE1 handle motor control and encoder feedback
 
             delta_encoder1 = new_value_encoder1 - old_value_encoder1; // new value continuously updated in timer callback
             old_value_encoder1 = new_value_encoder1;
-            cr_encoder1 = (double)delta_encoder1 * (double)(1000 / ML_REF_MS);//max_pps; // encoder calculated rate
+            cr_encoder1 = (double)delta_encoder1 * (double)(1000 / ML_REF_MS)/max_pps; // encoder calculated rate
 
             delta_encoder2 = new_value_encoder2 - old_value_encoder2; // new value continuously updated in timer callback
             old_value_encoder2 = new_value_encoder2;
-            cr_encoder2 = (double)delta_encoder2 * (double)(1000 / ML_REF_MS);//max_pps; // encoder calculated rate
+            cr_encoder2 = (double)delta_encoder2 * (double)(1000 / ML_REF_MS)/max_pps; // encoder calculated rate          
 
-            printf("\033[A\33[2K\r value: %i, delta: %i, rate: %f \n", new_value_encoder2, delta_encoder2, cr_encoder2);
-           
-            if(pid_on){ //pid-loop              
+            cr_motor1 = pid_mot1.output_update(cr_encoder1, dt);  // motor calculated rate  
+            cr_motor2 = pid_mot2.output_update(cr_encoder2, dt);  // motor calculated rate 
+            //mot control
+            val_motor1 = cr_motor1*MOT_PWM_TOP;
+            val_motor2 = cr_motor2*MOT_PWM_TOP;
+            // pwm_set_gpio_level(MOTOR1_PWM_OUT_PIN, val_motor1);
+            // pwm_set_gpio_level(MOTOR2_PWM_OUT_PIN, val_motor2);
 
-                cr_motor1 = pid_mot1.output_update(cr_encoder1, dt);  // motor calculated rate  
-                cr_motor2 = pid_mot2.output_update(cr_encoder2, dt);  // motor calculated rate 
-                //mot control
-
-            }
+            printf("\033[A\33[2K\r e1: %f, m1: %f, v1 %i, e2: %f, m2 %f, v2 %i \n", cr_encoder1, cr_motor1, val_motor1, cr_encoder2, cr_motor2, val_motor2 );
 
          }
 
+
     }
+
 }
 
-int main() { // CORE0 handle web server and user input
+int main() { // CORE0 
     setup_pins();
-    // setup_pwm_motors();
     stdio_init_all();    
     setup_uart();
 
@@ -186,16 +189,7 @@ int main() { // CORE0 handle web server and user input
     uint led_state_core0 = 1;
     printf("r\n");   
 
-    
-    // gpio_put(MOTOR1_EN_PIN, 1);
-    // gpio_put(MOTOR2_EN_PIN, 1);
-
-
-    // pwm_set_gpio_level(MOTOR1_PWM_OUT_PIN, 0);
-    // pwm_set_gpio_level(MOTOR2_PWM_OUT_PIN, 0);
-
     while (true) {        
-
 
         uint64_t ct = to_ms_since_boot(get_absolute_time());
         if(ct - pt >= 500){  
@@ -231,32 +225,32 @@ void setup_pins(){
     gpio_init(MOTOR1_PULSE_IN_PIN);
     gpio_set_dir(MOTOR1_PULSE_IN_PIN, GPIO_IN);   
 
-    gpio_init(MOTOR1_PWM_OUT_PIN);
-    gpio_set_dir(MOTOR1_PWM_OUT_PIN, GPIO_OUT);
-    gpio_put(MOTOR1_PWM_OUT_PIN, 0);
+    // gpio_init(MOTOR1_PWM_OUT_PIN);
+    // gpio_set_dir(MOTOR1_PWM_OUT_PIN, GPIO_OUT);
+    // gpio_put(MOTOR1_PWM_OUT_PIN, 0);
 
     gpio_init(MOTOR1_DIR_PIN);
     gpio_set_dir(MOTOR1_DIR_PIN, GPIO_OUT);
-    gpio_put(MOTOR1_DIR_PIN, 0);
+    gpio_put(MOTOR1_DIR_PIN, 1);
 
-    gpio_init(MOTOR1_EN_PIN);
-    gpio_set_dir(MOTOR1_EN_PIN, GPIO_OUT);
-    gpio_put(MOTOR1_EN_PIN, 0);
+    gpio_init(MOTOR1_BRK_PIN);
+    gpio_set_dir(MOTOR1_BRK_PIN, GPIO_OUT);
+    gpio_put(MOTOR1_BRK_PIN, 0);
 
     gpio_init(MOTOR2_PULSE_IN_PIN);
     gpio_set_dir(MOTOR2_PULSE_IN_PIN, GPIO_IN);
 
-    gpio_init(MOTOR2_PWM_OUT_PIN);
-    gpio_set_dir(MOTOR2_PWM_OUT_PIN, GPIO_OUT);
-    gpio_put(MOTOR2_PWM_OUT_PIN, 0);
+    // gpio_init(MOTOR2_PWM_OUT_PIN);
+    // gpio_set_dir(MOTOR2_PWM_OUT_PIN, GPIO_OUT);
+    // gpio_put(MOTOR2_PWM_OUT_PIN, 0);
 
     gpio_init(MOTOR2_DIR_PIN);
     gpio_set_dir(MOTOR2_DIR_PIN, GPIO_OUT);
     gpio_put(MOTOR2_DIR_PIN, 0);
 
-    gpio_init(MOTOR2_EN_PIN);
-    gpio_set_dir(MOTOR2_EN_PIN, GPIO_OUT);  
-    gpio_put(MOTOR2_EN_PIN, 0);
+    gpio_init(MOTOR2_BRK_PIN);
+    gpio_set_dir(MOTOR2_BRK_PIN, GPIO_OUT);  
+    gpio_put(MOTOR2_BRK_PIN, 0);
     
 }
 
@@ -346,8 +340,8 @@ static void setup_pwm_motors(){
     // uint32_t fsys = clock_get_hz(clk_sys);
     // 4.5.2.6. Configuring PWM Period
     uint16_t pwm_TOP = MOT_PWM_TOP; // 99
-    uint8_t pwm_DIV_int = 31;
-    uint8_t pwm_DIV_frac = 4;
+    uint8_t pwm_DIV_int = 62;//31;
+    uint8_t pwm_DIV_frac = 8;//4;
     bool pwm_CSR = 1;
     // uint32_t pwm_freq = fsys / ((pwm_TOP + 1)*(pwm_CSR + 1)*(pwm_DIV_int + pwm_DIV_frac/16 ));    
     // 20k = 125m / ((99+1)*(1+1)*(31+4/16))
