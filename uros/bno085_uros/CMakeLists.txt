@@ -11,6 +11,8 @@ include_directories(${IMU_PATH})
 
 project(bno085_uros_usb C CXX ASM)
 
+link_directories(libmicroros)
+
 add_executable(bno085_uros_usb
     bno085_uros_usb.cpp
     $ENV{PICO_UROS_PATH}/pico_uart_transport.c
@@ -36,6 +38,10 @@ target_link_libraries(bno085_uros_usb
 target_include_directories(bno085_uros_usb PUBLIC
     $ENV{PICO_UROS_PATH}/libmicroros/include
 )
+
+
+SET(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -ffunction-sections -fdata-sections")
+SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -ffunction-sections -fdata-sections")
 
 # Configure Pico
 pico_enable_stdio_usb(bno085_uros_usb 1)

@@ -2,7 +2,6 @@
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
 #include "pico/mutex.h" // mutex_t
-#include "pico_uart_transports.h"
 #include <math.h>
 #include "hardware/i2c.h"
 #include "pico/cyw43_arch.h"
@@ -10,6 +9,7 @@
 #include "bno085_i2c.hpp"
 
 extern "C" {
+#include "pico_uart_transports.h"
 #include <rcl/rcl.h>
 #include <rcl/error_handling.h>
 #include <rclc/rclc.h>
