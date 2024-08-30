@@ -16,8 +16,6 @@ class pid {
      *  \param kp Proportional gain
      *  \param ki Integral gain
      *  \param kd Derivative gain
-     *  \param db Deadband
-     *  \param mo Max output
     */
     pid(float kp = 0.25, float ki = 0.1, float kd=0.01);
     
@@ -27,25 +25,23 @@ class pid {
      *  \return The controller output
     */
     float output_update(float sensor_input, float time_change); 
+
     void set_setpoint(float sp);
     float get_setpoint();
     void set_kp(float kp);
     void set_ki(float ki);
     void set_kd(float kd);
-    void set_db(float db);
-    void set_mo(float mo); 
     float get_kp();
     float get_ki();
     float get_kd();
-    float get_db();
-    float get_mo();
 
   private:
-    float _kp, _ki, _kd;
+    float _kp;
+    float _ki;
+    float _kd;
     float _setpoint;
-    float _accumulative_error;
-    float _difference_error;
-    float _rate_error;
+    float _error_previous;
+    float _error_integral;
     float _controller_output;
 
 };

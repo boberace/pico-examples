@@ -2,6 +2,12 @@
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
 #include "pico/mutex.h"
+#include "pico/cyw43_arch.h"
+#include "hardware/i2c.h"
+#include "bno085_i2c.hpp"
+
+extern "C" {
+
 #include "pico_uart_transports.h"
 
 #include <rcl/rcl.h>
@@ -12,12 +18,11 @@
 #include <sensor_msgs/msg/imu.h>
 #include <rmw_microros/rmw_microros.h>
 
-#include "hardware/i2c.h"
-#include "bno085_i2c.hpp"
+}
 
-#include "pico/cyw43_arch.h"
 
-// #define USING_PICO_W // uncomment if using pico-w so that we can blink the LED
+
+#define USING_PICO_W // uncomment if using pico-w so that we can blink the LED
 
 #ifdef USING_PICO_W
 #define led_toggle() cyw43_arch_gpio_put( CYW43_WL_GPIO_LED_PIN, !cyw43_arch_gpio_get(CYW43_WL_GPIO_LED_PIN));

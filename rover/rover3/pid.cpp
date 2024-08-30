@@ -1,37 +1,40 @@
 #include "pid.h"
-#include<math.h>
 
 pid::pid(float kp, float ki, float kd) {
-    _setpoint = 0; // value you want the controller output to maintain
-    _kp = kp; // proportional constant of PID
-    _ki = ki; // integral constant of PID
-    _kd = kd; // derivative constant of PID
 
-    _difference_error = 0; //  error between the setpoint and the sensor 
-    _accumulative_error = 0; //  accumulation of difference error proportional to the time change
-    _controller_output = 0; // arbitrated output based on PID, deaband, and minimum output relationships
+    _setpoint = 0; 
+
+    _kp = kp;
+    _ki = ki; 
+    _kd = kd; 
+
+    _error_integral = 0; 
+    _error_previous = 0;
+    _controller_output = 0;
 
 }
 
 
 float pid::output_update(float sensor_input, float time_change) {
 
-    float previous_difference_error, previous_controller_output, pid_adjustment;
-
-    previous_controller_output = _controller_output;
-    previous_difference_error = _difference_error;
+    float error, error_derivative;
  
-    _difference_error = _setpoint - sensor_input; 
-    // The following if statment prevents the controller from accumulating error at maximum controller output (aka integral windup)
-    if ((previous_controller_output > -1) and (previous_controller_output < 1)) _accumulative_error += _difference_error*time_change; 
+    error = _setpoint - sensor_input; 
+    _error_previous = error;
 
-    _rate_error = (_difference_error - previous_difference_error )/time_change;    
+    // The following if statement prevents integration of error at maximum controller output (aka integral windup)
+    if (((_controller_output = -1) and (error > 0)) or ((_controller_output = 1) and (error < 0)) )
+    _error_integral += error*time_change; 
 
-    pid_adjustment = _kp*_difference_error + _ki*_accumulative_error + _kd*_rate_error;
+    error_derivative = (error - _error_previous )/time_change;    
 
-    _controller_output = previous_controller_output + pid_adjustment;
+    _controller_output = _kp*error + _ki*_error_integral + _kd*error_derivative;     
 
-    return _controller_output > 1 ? 1 : (_controller_output < -1 ? -1 : _controller_output);
+    // The following if statements prevent the controller output from exceeding the limits of -1 to 1
+    if (_controller_output > 1) _controller_output = 1;
+    if (_controller_output < -1) _controller_output = -1;       
+    
+    return _controller_output;
 
 } 
 
